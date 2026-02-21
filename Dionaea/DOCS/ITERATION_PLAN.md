@@ -60,7 +60,6 @@
 - [ ] **Backend**:
     - [ ] Create Node Management APIs (CRUD).
     - [ ] Implement Alerting Engine (Check logs against rules).
-    - [ ] Implement Notification Dispatcher (Email/Webhook).
 - [ ] **Frontend**:
     - [ ] Develop Node Management page.
     - [ ] Develop Alert Rule Configuration page (Thresholds/Keywords).
@@ -73,7 +72,6 @@
 - [ ] **Security**:
     - [ ] Implement Login Failure Lockout (Redis).
     - [ ] Implement 2FA (TOTP).
-    - [ ] Conduct Code Audit & Dependency Scan.
 - [ ] **Performance**:
     - [ ] Stress test with Locust (1000 users).
     - [ ] Optimize frontend bundle (Split chunks).

@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: dionaea_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dionaea_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dionaea_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-dionaea_db}
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dionaea_user -d dionaea_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Uncomment when ready to integrate backend
+  # backend:
+  #   build: ./backend
+  #   container_name: dionaea_backend
+  #   volumes:
+  #     - ./backend:/app
+  #     - ./logs:/var/log/dionaea
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     DATABASE_URL: postgresql://dionaea_user:dionaea_pass@db:5432/dionaea_db

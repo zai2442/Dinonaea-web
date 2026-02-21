@@ -13,6 +13,21 @@
 3. 创建蜜罐容器；#docker run -d -p 80:80 -v /opt:/tmp --restart=always web_dionaea
 4. 添加计划任务；*/5 * * * * /bin/bash /opt/Check.sh 
 
+####本地部署
+1. cd /home/kali/Dionaea/Dinonaea-web/Dionaea/web_dionaea
+# 建议用 virtualenv，如已配置可略过
+virtualenv -p python2 venv
+source venv/bin/activate
+
+sudo apt update
+sudo apt install python2
+curl https://bootstrap.pypa.io/pip/2.7/get-pip.py -o get-pip.py
+sudo python2 get-pip.py
+pip2 --version
+
+pip install django==1.9.8 
+2. 执行迁移 python manage.py migrate
+3. 启动服务 python manage.py runserver 0.0.0.0:8000
 
 ####登录界面
 ![](pic/web_dionaea_01.png)

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dionaea 管理仪表盘</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1890ff',
+                        'primary-hover': '#40a9ff',
+                        error: '#ff4d4f',
+                        success: '#52c41a',
+                        warning: '#faad14',
+                    },
+                    fontFamily: {
+                        sans: ['PingFang SC', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-white w-64 flex-shrink-0 border-r border-gray-200 flex flex-col transition-all duration-300 transform -translate-x-full md:translate-x-0 fixed md:relative z-30 h-full">
+        <!-- Logo -->
+        <div class="h-16 flex items-center justify-center border-b border-gray-100">
+            <h1 class="text-xl font-bold text-primary flex items-center">
+                <i class="fas fa-shield-alt mr-2"></i> Dionaea Admin
+            </h1>
+        </div>
+
+        <!-- User Profile Summary -->
+        <div class="p-4 border-b border-gray-100 flex items-center">
+            <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-lg font-bold mr-3" id="user-avatar">
+                U
+            </div>
+            <div>
+                <p class="text-sm font-medium text-gray-800" id="user-name">Loading...</p>
+                <p class="text-xs text-gray-500" id="user-role">...</p>
+            </div>
+        </div>
+
+        <!-- Menu -->
+        <nav class="flex-1 overflow-y-auto py-4 px-2 space-y-1" id="sidebar-menu">
+            <!-- Menu items will be injected here by JS -->
+        </nav>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-100">
+            <button id="logout-btn" class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600 focus:outline-none transition-colors">
+                <i class="fas fa-sign-out-alt mr-2"></i> 退出登录
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden transition-opacity duration-300 opacity-0"></div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-sm h-16 flex items-center justify-between px-6 z-10">
+            <div class="flex items-center">
+                <button id="sidebar-toggle" class="text-gray-500 focus:outline-none md:hidden mr-4">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h2 class="text-lg font-medium text-gray-800" id="page-title">仪表盘</h2>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button class="text-gray-400 hover:text-gray-600 relative">
+                    <i class="fas fa-bell"></i>
+                    <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                </button>
+                <button class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6" id="main-content">
+            <!-- Dashboard Home -->
+            <div id="view-dashboard" class="view-section">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <!-- Stat Card 1 -->
+                    <div class="bg-white rounded-lg shadow p-6 flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-500 mr-4">
+                            <i class="fas fa-users text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">总用户数</p>
+                            <p class="text-2xl font-bold text-gray-800" id="stat-users">0</p>
+                        </div>
+                    </div>
+                    <!-- Stat Card 2 -->
+                    <div class="bg-white rounded-lg shadow p-6 flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-500 mr-4">
+                            <i class="fas fa-user-shield text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">活跃管理员</p>
+                            <p class="text-2xl font-bold text-gray-800" id="stat-admins">0</p>
+                        </div>
+                    </div>
+                     <!-- Stat Card 3 -->
+                     <div class="bg-white rounded-lg shadow p-6 flex items-center">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-500 mr-4">
+                            <i class="fas fa-chart-line text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">今日访问</p>
+                            <p class="text-2xl font-bold text-gray-800">1,234</p>
+                        </div>
+                    </div>
+                     <!-- Stat Card 4 -->
+                     <div class="bg-white rounded-lg shadow p-6 flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-500 mr-4">
+                            <i class="fas fa-exclamation-triangle text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">系统警告</p>
+                            <p class="text-2xl font-bold text-gray-800">3</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity / Placeholder -->
+                <div class="bg-white rounded-lg shadow mb-6">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-800">最近活动</h3>
+                        <button class="text-sm text-primary hover:underline">查看全部</button>
+                    </div>
+                    <div class="p-6">
+                        <p class="text-gray-500 text-center py-8">暂无数据</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Management View (Hidden by default) -->
+            <div id="view-users" class="view-section hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-800">用户列表</h3>
+                        <button class="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary-hover transition-colors">
+                            <i class="fas fa-plus mr-2"></i> 新增用户
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户名</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">邮箱</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="users-table-body">
+                                <!-- Users will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role Management View (Hidden by default) -->
+            <div id="view-roles" class="view-section hidden">
+                 <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-800">角色与权限</h3>
+                        <button class="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary-hover transition-colors">
+                            <i class="fas fa-plus mr-2"></i> 新增角色
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <p class="text-gray-500">角色管理功能开发中...</p>
+                    </div>
+                </div>
+            </div>
+            
+             <!-- System Monitor View (Hidden by default) -->
+            <div id="view-monitor" class="view-section hidden">
+                 <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-lg font-medium text-gray-800">系统监控</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="h-64 bg-gray-50 rounded flex items-center justify-center border border-dashed border-gray-300">
+                            <p class="text-gray-500">监控图表区域</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="assets/js/dashboard.js"></script>
+</body>
+</html>

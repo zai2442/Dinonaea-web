@@ -1,0 +1,57 @@
+/* Custom Styles for Login Page */
+
+/* Base Styles */
+body {
+    background-color: #f3f4f6; /* bg-gray-100 */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+/* Form Input Animations */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Button Loading State */
+.btn-loading {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Smooth Focus Transitions */
+input:focus {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Custom Checkbox Style (optional, Tailwind default is usually fine but this mimics shadcn more closely) */
+input[type="checkbox"] {
+    accent-color: #1890ff;
+}
+
+/* Accessibility Focus Ring */
+*:focus-visible {
+    outline: 2px solid #1890ff;
+    outline-offset: 2px;
+}
+
+/* Shake Animation for Errors */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 640px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+}

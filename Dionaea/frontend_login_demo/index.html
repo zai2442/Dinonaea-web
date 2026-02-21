@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dionaea 管理系统登录</title>
+    <!-- Tailwind CSS (CDN for demo purposes, in production consider building) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1890ff',
+                        'primary-hover': '#40a9ff',
+                        error: '#ff4d4f',
+                        success: '#52c41a',
+                        warning: '#faad14',
+                    },
+                    fontFamily: {
+                        sans: ['PingFang SC', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
+
+    <!-- Login Container -->
+    <div class="w-full max-w-md bg-white rounded-lg shadow-lg overflow-hidden transform transition-all hover:shadow-xl animate-slide-up" role="main" aria-labelledby="login-title">
+        
+        <!-- Header -->
+        <div class="px-8 py-6 text-center border-b border-gray-100">
+            <h1 id="login-title" class="text-2xl font-bold text-gray-800 mb-2">欢迎回来</h1>
+            <p class="text-gray-500 text-sm">登录 Dionaea 管理系统</p>
+        </div>
+
+        <!-- Form -->
+        <div class="px-8 py-8">
+            <form id="loginForm" class="space-y-6" novalidate>
+                
+                <!-- Username Input -->
+                <div class="relative group">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400 group-focus-within:text-primary transition-colors duration-200"></i>
+                        </div>
+                        <input type="text" id="username" name="username" required
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 
+                            focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm transition-all duration-200"
+                            placeholder="请输入用户名" aria-required="true" autocomplete="username">
+                    </div>
+                    <p class="mt-1 text-xs text-error hidden" id="username-error" role="alert"></p>
+                </div>
+
+                <!-- Password Input -->
+                <div class="relative group">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400 group-focus-within:text-primary transition-colors duration-200"></i>
+                        </div>
+                        <input type="password" id="password" name="password" required
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 
+                            focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm transition-all duration-200"
+                            placeholder="请输入密码" aria-required="true" autocomplete="current-password">
+                    </div>
+                    <p class="mt-1 text-xs text-error hidden" id="password-error" role="alert"></p>
+                </div>
+
+                <!-- Options: Remember Me & Forgot Password -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input id="remember-me" name="remember-me" type="checkbox"
+                            class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer transition-colors duration-200">
+                        <label for="remember-me" class="ml-2 block text-sm text-gray-700 cursor-pointer select-none">记住我</label>
+                    </div>
+                    <div class="text-sm">
+                        <a href="#" class="font-medium text-primary hover:text-primary-hover transition-colors duration-200 focus:outline-none focus:underline">
+                            忘记密码?
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div>
+                    <button type="submit" id="submit-btn"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-200 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span id="btn-text">登 录</span>
+                        <svg id="btn-loading" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Global Error Message -->
+            <div id="global-error" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md hidden animate-fade-in" role="alert">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-circle text-error"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-error" id="global-error-text"></p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-8 py-4 bg-gray-50 border-t border-gray-100 text-center">
+            <p class="text-xs text-gray-500">
+                还没有账号? 
+                <a href="register.html" class="font-medium text-primary hover:text-primary-hover transition-colors duration-200">立即注册</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="assets/js/app.js"></script>
+</body>
+</html>

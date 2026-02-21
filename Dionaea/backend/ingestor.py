@@ -3,8 +3,8 @@ import logging
 from datetime import datetime
 import time
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine
-from models import Base, AttackLog
+from app.db.database import SessionLocal, engine, Base
+from app.models.attack_log import AttackLog
 import os
 
 # Configure logging

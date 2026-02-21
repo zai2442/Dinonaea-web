@@ -1,85 +1,76 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
+from typing import Any, List, Optional
+from datetime import datetime
+
 from app.db.database import get_db
-from app.services.generic_service import GenericService
-from app.core.models_registry import get_model
+from app.services.attack_log_service import AttackLogService
+from app.schemas.attack_log import AttackLog, AttackLogFilter, AttackLogStats
 from app.core.dependencies import get_current_active_user
 from app.models.user import User
-from typing import Optional, List, Any
-import json
 
 router = APIRouter()
 
-@router.get("/{resource}")
-def read_resource(
-    resource: str,
+@router.get("/logs", response_model=List[AttackLog])
+def read_logs(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
     skip: int = 0,
-    limit: int = 100,
-    sort: Optional[str] = None,
-    filter: Optional[str] = Query(None, description="Format: field:op:value, e.g. age:gt:18"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    model = get_model(resource)
-    if not model:
-        raise HTTPException(status_code=404, detail="Resource not found")
-    
-    filters = {}
-    if filter:
-        # Simple parsing logic for filter query param
-        # Assume filter=field:op:value or multiple filters comma separated?
-        # Let's assume one filter string for simplicity or multiple query params
-        # But filter param is single string here.
-        # Format: field1:op1:val1,field2:op2:val2
-        parts = filter.split(",")
-        for part in parts:
-            if ":" in part:
-                field, op, val = part.split(":", 2)
-                filters[field] = f"{op}:{val}"
-    
-    service = GenericService(model)
-    return service.get_multi(db, skip=skip, limit=limit, filters=filters, sort_by=sort)
+    limit: int = 50,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    source_ip: Optional[str] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None
+) -> Any:
+    """
+    Retrieve attack logs with filtering.
+    """
+    filters = AttackLogFilter(
+        offset=skip,
+        limit=limit,
+        start_time=start_time,
+        end_time=end_time,
+        source_ip=source_ip,
+        username=username,
+        password=password
+    )
+    service = AttackLogService(db)
+    logs, total = service.get_logs(filters)
+    return logs
 
-@router.post("/{resource}")
-def create_resource(
-    resource: str,
-    payload: dict,
+@router.get("/stats/charts")
+def get_stats_charts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
-):
-    model = get_model(resource)
-    if not model:
-        raise HTTPException(status_code=404, detail="Resource not found")
-        
-    service = GenericService(model)
-    return service.create(db, payload, current_user.id)
+) -> Any:
+    """
+    Get statistics for charts (Top IPs, Usernames, Passwords).
+    Cached for 10 minutes.
+    """
+    service = AttackLogService(db)
+    return service.get_statistics()
 
-@router.put("/{resource}/{id}")
-def update_resource(
-    resource: str,
-    id: int,
-    payload: dict,
+@router.get("/stats/summary")
+def get_stats_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
-):
-    model = get_model(resource)
-    if not model:
-        raise HTTPException(status_code=404, detail="Resource not found")
-        
-    service = GenericService(model)
-    return service.update(db, id, payload, current_user.id)
+) -> Any:
+    """
+    Get summary statistics (Most frequent IP, Username, Password).
+    Compatible with Login_statistics.sh output format conceptually.
+    """
+    service = AttackLogService(db)
+    return service.get_summary()
 
-@router.delete("/{resource}/{id}")
-def delete_resource(
-    resource: str,
-    id: int,
+@router.post("/refresh")
+def refresh_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
-):
-    model = get_model(resource)
-    if not model:
-        raise HTTPException(status_code=404, detail="Resource not found")
-        
-    service = GenericService(model)
-    service.delete(db, id, current_user.id)
-    return {"status": "success"}
+) -> Any:
+    """
+    Force refresh statistics cache.
+    Called by external scripts when logs change.
+    """
+    service = AttackLogService(db)
+    return service.refresh_stats()

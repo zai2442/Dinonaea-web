@@ -25,6 +25,9 @@
     </script>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
     <style>
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
@@ -207,14 +210,92 @@
             
              <!-- System Monitor View (Hidden by default) -->
             <div id="view-monitor" class="view-section hidden">
-                 <div class="bg-white rounded-lg shadow overflow-hidden">
+                 <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
                     <div class="px-6 py-4 border-b border-gray-100">
-                        <h3 class="text-lg font-medium text-gray-800">系统监控</h3>
+                        <h3 class="text-lg font-medium text-gray-800">日志筛选</h3>
                     </div>
-                    <div class="p-6">
-                        <div class="h-64 bg-gray-50 rounded flex items-center justify-center border border-dashed border-gray-300">
-                            <p class="text-gray-500">监控图表区域</p>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <input type="text" id="filter-ip" placeholder="源IP" class="border p-2 rounded text-sm">
+                        <input type="text" id="filter-user" placeholder="用户名" class="border p-2 rounded text-sm">
+                        <input type="date" id="filter-start-date" class="border p-2 rounded text-sm">
+                        <button id="btn-search-logs" class="bg-primary text-white px-4 py-2 rounded hover:bg-primary-hover">查询</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-lg font-medium text-gray-800">攻击日志</h3>
+                    </div>
+                    <div class="overflow-x-auto max-h-[600px] overflow-y-auto" id="logs-container">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间戳</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">源IP</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户名</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">密码</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">协议</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="logs-table-body">
+                                <!-- Logs will be injected here -->
+                            </tbody>
+                        </table>
+                        <div id="logs-loading" class="text-center py-4 hidden">加载中...</div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-100 flex justify-between items-center bg-gray-50">
+                        <button id="btn-prev-page" class="px-3 py-1 bg-white border rounded text-sm disabled:opacity-50">上一页</button>
+                        <span class="text-sm text-gray-600">当前显示 50 条</span>
+                        <button id="btn-next-page" class="px-3 py-1 bg-white border rounded text-sm disabled:opacity-50">下一页</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Stats View (Hidden by default) -->
+            <div id="view-stats" class="view-section hidden">
+                <!-- Summary Panel -->
+                <div class="bg-white rounded-lg shadow mb-6">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-800">统计摘要</h3>
+                        <span class="text-xs text-gray-400" id="stats-last-updated">更新时间: --</span>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                        <div class="p-4 bg-red-50 rounded-lg border border-red-100">
+                            <p class="text-sm text-gray-500 mb-1">最频繁攻击IP</p>
+                            <p class="text-xl font-bold text-red-600" id="summary-ip">--</p>
+                            <p class="text-xs text-gray-400 mt-1" id="summary-ip-count">0 次</p>
                         </div>
+                        <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                            <p class="text-sm text-gray-500 mb-1">最常尝试用户名</p>
+                            <p class="text-xl font-bold text-blue-600" id="summary-user">--</p>
+                            <p class="text-xs text-gray-400 mt-1" id="summary-user-count">0 次</p>
+                        </div>
+                        <div class="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                            <p class="text-sm text-gray-500 mb-1">最常尝试密码</p>
+                            <p class="text-xl font-bold text-orange-600" id="summary-pwd">--</p>
+                            <p class="text-xs text-gray-400 mt-1" id="summary-pwd-count">0 次</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Top IPs Bar Chart -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-4 ml-2">TOP 10 攻击源IP</h4>
+                        <div id="chart-top-ips" class="w-full h-80"></div>
+                    </div>
+
+                    <!-- Top Usernames Pie Chart -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-4 ml-2">TOP 5 用户名占比</h4>
+                        <div id="chart-top-users" class="w-full h-80"></div>
+                    </div>
+
+                    <!-- Top Passwords Word Cloud -->
+                    <div class="bg-white rounded-lg shadow p-4 col-span-1 lg:col-span-2">
+                        <h4 class="text-md font-medium text-gray-700 mb-4 ml-2">密码词云 (TOP 20)</h4>
+                        <div id="chart-top-pwds" class="w-full h-80"></div>
                     </div>
                 </div>
             </div>

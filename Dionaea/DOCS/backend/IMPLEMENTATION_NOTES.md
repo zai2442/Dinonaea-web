@@ -1,47 +1,48 @@
-# Implementation Notes
+# Implementation Notes - Log Statistics Module
 
-## 1. Technical Stack
--   **Framework**: FastAPI 0.129.0
--   **ORM**: SQLAlchemy 2.0.46
--   **Database**: PostgreSQL 15+
--   **Cache**: Redis 7.2.0 (Client: redis-py)
--   **Auth**: JWT (python-jose) + RBAC
+## Overview
+This module adds Dionaea honeypot log visualization and statistics to the dashboard. It ingests logs from a file, stores them in the database, and provides RESTful APIs for the frontend to display charts and tables.
 
-## 2. Key Algorithms & Strategies
+## Components
 
-### 2.1 Permission Caching
--   **Strategy**: Redis key `rbac:user:{id}:permissions`.
--   **Invalidation**: When a Role or Permission is updated, we invalidate all related user keys or use a versioning scheme. Currently, we use a simple TTL (5 mins).
+### 1. Backend (FastAPI)
+- **Model**: `AttackLog` (SQLAlchemy) in `app/models/attack_log.py`.
+- **Schema**: `AttackLog`, `AttackLogStats` (Pydantic) in `app/schemas/attack_log.py`.
+- **Service**: `AttackLogService` in `app/services/attack_log_service.py`.
+    - Handles data retrieval and statistics calculation.
+    - Uses Redis for caching statistics (10 minutes TTL).
+- **API**: `app/api/v1/data.py`.
+    - `GET /data/logs`: Paginated log list with filtering.
+    - `GET /data/stats/charts`: Top IPs, Usernames, Passwords for charts.
+    - `GET /data/stats/summary`: Summary stats (compatible with shell script output).
+    - `POST /data/refresh`: Force refresh of statistics cache.
 
-### 2.2 Pagination & Performance
--   **Optimization**:
-    -   Used `Select(func.count())` for efficient counting.
-    -   Indexed high-cardinality fields (`username`, `email`, `timestamp`).
-    -   Used `offset/limit` pagination.
-    -   For export, we use `StreamingResponse` (to be implemented fully) to avoid memory spikes.
+### 2. Data Ingestion
+- **Script**: `backend/ingestor.py`
+- **Function**: Reads `Dionaea.log` (path configurable via `DIONAEA_LOG_PATH`, default `/opt/Dionaea.log`).
+- **Parsing**: Regex-based parsing of timestamp, username, password, IP.
+- **Deduplication**: Simple check against existing records to avoid duplicates.
 
-### 2.3 Concurrency Control
--   **Optimistic Locking**:
-    -   Each update checks `version` field.
-    -   If `db_version != request_version`, throw 409 Conflict.
-    -   Ensures no lost updates.
+### 3. Frontend (Vanilla JS + ECharts)
+- **Dashboard**: `dashboard.html` updated with "System Monitoring" and "Data Statistics" views.
+- **Logic**: `assets/js/dashboard.js` handles data fetching and ECharts rendering.
+- **Visuals**:
+    - Bar Chart: Top 10 Attacker IPs.
+    - Pie Chart: Top 5 Usernames.
+    - Word Cloud: Top 20 Passwords.
+    - Log Table: Paginated view of attack logs.
 
-## 3. Challenges & Solutions
+### 4. Integration
+- **Check.sh**: Monitoring script (cron job).
+    - Detects changes in `Dionaea.log` using MD5.
+    - Triggers `Login_statistics.sh`.
+    - Triggers backend cache refresh via `backend/scripts/refresh_cache.py`.
 
-### 3.1 Circular Imports
--   **Problem**: `User` model needs `Role`, `Role` needs `User`.
--   **Solution**: Used `TYPE_CHECKING` imports and string references in `relationship()`.
+## Configuration
+- **Redis**: Required for caching. Configured in `docker-compose.yml`.
+- **Database**: SQLite (dev) or Postgres (prod).
+- **Log Path**: Set `DIONAEA_LOG_PATH` environment variable.
 
-### 3.2 Dynamic Filtering
--   **Problem**: Generic CRUD needs flexible filters.
--   **Solution**: Implemented a parser for `field:op:value` syntax (e.g., `age:gt:18`) in `GenericService`.
-
-## 4. Performance Benchmarks (Projected)
--   **User List (100k rows)**: < 200ms with index.
--   **Login**: < 50ms.
--   **Throughput**: Expected ~1000 TPS on standard hardware.
-
-## 5. Next Steps
--   Implement full streaming for JSON export.
--   Add more unit tests.
--   Set up CI/CD pipeline.
+## Testing
+- Unit tests in `backend/tests/test_data_api.py`.
+- Manual verification via `Check.sh` execution.

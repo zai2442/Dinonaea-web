@@ -6,10 +6,10 @@
 # Desc: A simple statistics script.
 
 # Define
-Log_location="/opt/Dionaea.log"
-Most_login_ip=`awk -F: '{print $6}' Dionaea.log | uniq -c | head -n 1 `
-Most_login_username=`awk  '{print $6}' Dionaea.log  | awk -F: '{print $2 }' |uniq -c | head -n 1`
-Most_login_password=`awk  '{print $7}' Dionaea.log  | awk -F: '{print $2 }' |uniq -c | head -n 1`
+Log_location="/tmp/Dionaea.log"
+Most_login_ip=`awk -F: '{print $6}' $Log_location | uniq -c | head -n 1 `
+Most_login_username=`awk  '{print $6}' $Log_location  | awk -F: '{print $2 }' |uniq -c | head -n 1`
+Most_login_password=`awk  '{print $7}' $Log_location  | awk -F: '{print $2 }' |uniq -c | head -n 1`
 
 # Check file exist.
 if [ ! -f $Log_location ]; then

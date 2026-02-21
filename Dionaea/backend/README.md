@@ -33,8 +33,8 @@ This is the backend service for Dionaea Log Manager, built with FastAPI, Postgre
     ```
 
 ## API Documentation
--   Swagger UI: http://localhost:8000/docs
--   ReDoc: http://localhost:8000/redoc
+-   Swagger UI: http://localhost:8001/docs
+-   ReDoc: http://localhost:8001/redoc
 
 ## Features
 -   **User Management**: JWT Auth, RBAC, User CRUD.

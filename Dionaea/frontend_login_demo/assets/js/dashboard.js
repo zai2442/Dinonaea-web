@@ -10,6 +10,13 @@ const CONFIG = {
 
 // State
 let currentUser = null;
+let currentLogsPage = 0;
+const logsPerPage = 50;
+
+// Chart Instances
+let chartTopIPs = null;
+let chartTopUsers = null;
+let chartTopPwds = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Auth Check
@@ -42,6 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 3. Event Listeners
     setupEventListeners();
+    setupLogEventListeners();
 });
 
 // API Calls
@@ -72,6 +80,43 @@ async function fetchUsers() {
     return { items: [], total: 0 };
 }
 
+// Log & Stats API
+async function fetchLogs(skip = 0, limit = 50, filters = {}) {
+    const token = localStorage.getItem('dionaea_access_token');
+    const params = new URLSearchParams({ skip, limit });
+    
+    if (filters.ip) params.append('source_ip', filters.ip);
+    if (filters.user) params.append('username', filters.user);
+    if (filters.startDate) params.append('start_time', new Date(filters.startDate).toISOString());
+
+    const response = await fetch(`${CONFIG.API_BASE}/data/logs?${params.toString()}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) {
+        return await response.json();
+    }
+    throw new Error('Failed to fetch logs');
+}
+
+async function fetchStatsCharts() {
+    const token = localStorage.getItem('dionaea_access_token');
+    const response = await fetch(`${CONFIG.API_BASE}/data/stats/charts`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) return await response.json();
+    throw new Error('Failed to fetch stats');
+}
+
+async function fetchStatsSummary() {
+    const token = localStorage.getItem('dionaea_access_token');
+    const response = await fetch(`${CONFIG.API_BASE}/data/stats/summary`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.ok) return await response.json();
+    throw new Error('Failed to fetch summary');
+}
+
+
 // Rendering
 function renderUserProfile(user) {
     document.getElementById('user-name').textContent = user.username;
@@ -89,15 +134,13 @@ function renderSidebar(user) {
     menuContainer.innerHTML = ''; // Clear
 
     // Define Menu Items with Permission Requirements
-    // permission: null means accessible to all authenticated users
-    // permission: 'xxx' means requires that permission code (or super_admin role)
     const menuItems = [
         { id: 'nav-dashboard', label: '仪表盘', icon: 'fas fa-tachometer-alt', view: 'view-dashboard', permission: null },
         { id: 'nav-users', label: '用户管理', icon: 'fas fa-users', view: 'view-users', permission: 'user:list' },
         { id: 'nav-roles', label: '角色权限', icon: 'fas fa-user-tag', view: 'view-roles', permission: 'role:list' },
         { id: 'nav-monitor', label: '系统监控', icon: 'fas fa-server', view: 'view-monitor', permission: 'system:monitor' },
         { id: 'nav-stats', label: '数据统计', icon: 'fas fa-chart-bar', view: 'view-stats', permission: 'data:stats' },
-        { id: 'nav-settings', label: '系统设置', icon: 'fas fa-cogs', view: 'view-settings', permission: null }, // Everyone can see settings (maybe profile settings)
+        { id: 'nav-settings', label: '系统设置', icon: 'fas fa-cogs', view: 'view-settings', permission: null },
     ];
 
     const userPermissions = new Set();
@@ -159,9 +202,9 @@ function switchView(viewId, activeLink) {
         document.getElementById('page-title').textContent = titleMap[viewId] || '仪表盘';
         
         // Load data if needed
-        if (viewId === 'view-users') {
-            loadUsersList();
-        }
+        if (viewId === 'view-users') loadUsersList();
+        if (viewId === 'view-monitor') loadLogs();
+        if (viewId === 'view-stats') loadStats();
     }
 
     // Update Sidebar Active State
@@ -176,9 +219,6 @@ function switchView(viewId, activeLink) {
 }
 
 async function loadDashboardStats() {
-    // Only fetch if user has permission
-    // For demo, just mock or fetch minimal
-    // Update stats
     try {
         const users = await fetchUsers();
         document.getElementById('stat-users').textContent = users.total || 0;
@@ -230,7 +270,180 @@ async function loadUsersList() {
     }
 }
 
-// UI Interactions
+// --- Monitor & Stats Logic ---
+
+async function loadLogs(resetPage = false) {
+    if (resetPage) currentLogsPage = 0;
+    
+    const tbody = document.getElementById('logs-table-body');
+    const loading = document.getElementById('logs-loading');
+    
+    tbody.innerHTML = '';
+    loading.classList.remove('hidden');
+    
+    const filters = {
+        ip: document.getElementById('filter-ip').value,
+        user: document.getElementById('filter-user').value,
+        startDate: document.getElementById('filter-start-date').value
+    };
+
+    try {
+        const logs = await fetchLogs(currentLogsPage * logsPerPage, logsPerPage, filters);
+        loading.classList.add('hidden');
+        
+        if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">暂无日志数据</td></tr>';
+            return;
+        }
+
+        logs.forEach(log => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(log.timestamp).toLocaleString()}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${log.source_ip || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.username || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${log.password || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.protocol || 'smbd'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Pagination controls state
+        document.getElementById('btn-prev-page').disabled = currentLogsPage === 0;
+        document.getElementById('btn-next-page').disabled = logs.length < logsPerPage;
+
+    } catch (e) {
+        loading.classList.add('hidden');
+        tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-error">加载失败</td></tr>';
+    }
+}
+
+async function loadStats() {
+    try {
+        const [chartsData, summaryData] = await Promise.all([
+            fetchStatsCharts(),
+            fetchStatsSummary()
+        ]);
+        
+        renderStatsCharts(chartsData);
+        renderStatsSummary(summaryData);
+        
+        document.getElementById('stats-last-updated').textContent = `更新时间: ${new Date().toLocaleTimeString()}`;
+        
+    } catch (e) {
+        console.error("Failed to load stats", e);
+    }
+}
+
+function renderStatsSummary(data) {
+    // Mimic Login_statistics.sh output
+    // { most_login_ip: {name, value}, ... }
+    const setSummary = (id, item) => {
+        document.getElementById(id).textContent = item.name || 'N/A';
+        document.getElementById(`${id}-count`).textContent = `${item.value || 0} 次`;
+    };
+    
+    setSummary('summary-ip', data.most_login_ip);
+    setSummary('summary-user', data.most_login_username);
+    setSummary('summary-pwd', data.most_login_password);
+}
+
+function renderStatsCharts(data) {
+    // 1. Top IPs Bar Chart
+    if (!chartTopIPs) chartTopIPs = echarts.init(document.getElementById('chart-top-ips'));
+    chartTopIPs.setOption({
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'category', data: data.top_ips.map(i => i.name) },
+        yAxis: { type: 'value' },
+        series: [{
+            data: data.top_ips.map(i => i.value),
+            type: 'bar',
+            itemStyle: { color: '#1890ff' },
+            label: { show: true, position: 'top' }
+        }]
+    });
+    chartTopIPs.on('click', (params) => {
+        // Drill down: switch to monitor view and filter by IP
+        document.getElementById('filter-ip').value = params.name;
+        // Find monitor link
+        const monitorLink = document.querySelector('[data-view="view-monitor"]');
+        if (monitorLink) monitorLink.click();
+    });
+
+    // 2. Top Users Pie Chart
+    if (!chartTopUsers) chartTopUsers = echarts.init(document.getElementById('chart-top-users'));
+    chartTopUsers.setOption({
+        tooltip: { trigger: 'item' },
+        legend: { orient: 'vertical', left: 'left' },
+        series: [{
+            name: '用户名',
+            type: 'pie',
+            radius: '50%',
+            data: data.top_usernames,
+            emphasis: {
+                itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
+            }
+        }]
+    });
+
+    // 3. Top Passwords Word Cloud
+    if (!chartTopPwds) chartTopPwds = echarts.init(document.getElementById('chart-top-pwds'));
+    chartTopPwds.setOption({
+        tooltip: {},
+        series: [{
+            type: 'wordCloud',
+            gridSize: 2,
+            sizeRange: [12, 50],
+            rotationRange: [-90, 90],
+            shape: 'pentagon',
+            width: 600,
+            height: 400,
+            drawOutOfBound: false,
+            textStyle: {
+                color: function () {
+                    return 'rgb(' + [
+                        Math.round(Math.random() * 160),
+                        Math.round(Math.random() * 160),
+                        Math.round(Math.random() * 160)
+                    ].join(',') + ')';
+                }
+            },
+            emphasis: {
+                textStyle: { shadowBlur: 10, shadowColor: '#333' }
+            },
+            data: data.top_passwords
+        }]
+    });
+    
+    // Resize handling
+    window.addEventListener('resize', () => {
+        chartTopIPs && chartTopIPs.resize();
+        chartTopUsers && chartTopUsers.resize();
+        chartTopPwds && chartTopPwds.resize();
+    });
+}
+
+function setupLogEventListeners() {
+    // Search Button
+    document.getElementById('btn-search-logs').addEventListener('click', () => {
+        loadLogs(true);
+    });
+    
+    // Pagination
+    document.getElementById('btn-prev-page').addEventListener('click', () => {
+        if (currentLogsPage > 0) {
+            currentLogsPage--;
+            loadLogs();
+        }
+    });
+    
+    document.getElementById('btn-next-page').addEventListener('click', () => {
+        currentLogsPage++;
+        loadLogs();
+    });
+}
+
+// UI Interactions (Existing)
 function setupEventListeners() {
     // Sidebar Toggle (Mobile)
     const toggleBtn = document.getElementById('sidebar-toggle');

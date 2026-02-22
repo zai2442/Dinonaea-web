@@ -65,10 +65,14 @@ class AttackLogService:
             AttackLog.password, func.count(AttackLog.id).label('count')
         ).group_by(AttackLog.password).order_by(desc('count')).limit(20).all()
 
+        # 4. Total Logs Count
+        total_logs = self.db.query(AttackLog).count()
+
         stats = {
             "top_ips": [{"name": ip, "value": count} for ip, count in top_ips if ip],
             "top_usernames": [{"name": user, "value": count} for user, count in top_usernames if user],
             "top_passwords": [{"name": pwd, "value": count} for pwd, count in top_passwords if pwd],
+            "total_logs": total_logs,
             "timestamp": datetime.now().isoformat()
         }
 
@@ -91,7 +95,8 @@ class AttackLogService:
         return {
             "most_login_ip": most_login_ip,
             "most_login_username": most_login_user,
-            "most_login_password": most_login_pwd
+            "most_login_password": most_login_pwd,
+            "total_logs": stats.get('total_logs', 0)
         }
     
     def refresh_stats(self):

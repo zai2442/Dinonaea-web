@@ -131,15 +131,15 @@
                         </div>
                     </div>
                      <!-- Stat Card 3 -->
-                     <div class="bg-white rounded-lg shadow p-6 flex items-center">
-                        <div class="p-3 rounded-full bg-purple-100 text-purple-500 mr-4">
-                            <i class="fas fa-chart-line text-xl"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm text-gray-500">今日访问</p>
-                            <p class="text-2xl font-bold text-gray-800">1,234</p>
-                        </div>
-                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 flex items-center">
+                       <div class="p-3 rounded-full bg-purple-100 text-purple-500 mr-4">
+                           <i class="fas fa-chart-line text-xl"></i>
+                       </div>
+                       <div>
+                           <p class="text-sm text-gray-500">全部攻击日志</p>
+                           <p class="text-2xl font-bold text-gray-800" id="stat-total-logs">--</p>
+                       </div>
+                   </div>
                      <!-- Stat Card 4 -->
                      <div class="bg-white rounded-lg shadow p-6 flex items-center">
                         <div class="p-3 rounded-full bg-yellow-100 text-yellow-500 mr-4">
@@ -214,9 +214,14 @@
                     <div class="px-6 py-4 border-b border-gray-100">
                         <h3 class="text-lg font-medium text-gray-800">日志筛选</h3>
                     </div>
-                    <div class="p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
                         <input type="text" id="filter-ip" placeholder="源IP" class="border p-2 rounded text-sm">
                         <input type="text" id="filter-user" placeholder="用户名" class="border p-2 rounded text-sm">
+                        <select id="filter-protocol" class="border p-2 rounded text-sm bg-white">
+                            <option value="">所有协议</option>
+                            <option value="smb">SMB</option>
+                            <option value="http">HTTP</option>
+                        </select>
                         <input type="date" id="filter-start-date" class="border p-2 rounded text-sm">
                         <button id="btn-search-logs" class="bg-primary text-white px-4 py-2 rounded hover:bg-primary-hover">查询</button>
                     </div>

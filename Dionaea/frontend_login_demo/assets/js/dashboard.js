@@ -87,6 +87,7 @@ async function fetchLogs(skip = 0, limit = 50, filters = {}) {
     
     if (filters.ip) params.append('source_ip', filters.ip);
     if (filters.user) params.append('username', filters.user);
+    if (filters.protocol) params.append('attack_type', filters.protocol);
     if (filters.startDate) params.append('start_time', new Date(filters.startDate).toISOString());
 
     const response = await fetch(`${CONFIG.API_BASE}/data/logs?${params.toString()}`, {
@@ -222,6 +223,9 @@ async function loadDashboardStats() {
     try {
         const users = await fetchUsers();
         document.getElementById('stat-users').textContent = users.total || 0;
+
+        const stats = await fetchStatsSummary();
+        document.getElementById('stat-total-logs').textContent = stats.total_logs || 0;
     } catch (e) {
         console.warn('Failed to fetch dashboard stats', e);
     }
@@ -284,6 +288,7 @@ async function loadLogs(resetPage = false) {
     const filters = {
         ip: document.getElementById('filter-ip').value,
         user: document.getElementById('filter-user').value,
+        protocol: document.getElementById('filter-protocol').value,
         startDate: document.getElementById('filter-start-date').value
     };
 
@@ -303,7 +308,7 @@ async function loadLogs(resetPage = false) {
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${log.source_ip || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.username || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${log.password || '-'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.protocol || 'smbd'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${(log.protocol || 'SMB').toUpperCase()}</td>
             `;
             tbody.appendChild(tr);
         });

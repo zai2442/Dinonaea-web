@@ -19,11 +19,13 @@ logger = logging.getLogger("LogIngestor")
 
 # Log format regex
 # Example: "Wed, 18 Feb 2026 20:08:41  Username:1 Password:1 ipaddr:127.0.0.1"
+# Example 2: "Wed, 18 Feb 2026 20:08:41  Username:1 Password:1 ipaddr:127.0.0.1 Protocol:HTTP"
 LOG_PATTERN = re.compile(
     r"(?P<timestamp>[\w]{3}, \d{2} [\w]{3} \d{4} \d{2}:\d{2}:\d{2})\s+"
     r"Username:(?P<username>.*?)\s+"
     r"Password:(?P<password>.*?)\s+"
-    r"ipaddr:(?P<ipaddr>.*)"
+    r"ipaddr:(?P<ipaddr>.*?)"
+    r"(?:\s+Protocol:(?P<protocol>.*))?$"
 )
 
 # Date format in log
@@ -34,12 +36,12 @@ class LogHandler(FileSystemEventHandler):
         self.file_offsets = {}
 
     def on_created(self, event):
-        if not event.is_directory:
+        if not event.is_directory and os.path.basename(event.src_path) == "Dionaea.log":
             logger.info(f"New log file detected: {event.src_path}")
             self.process_file(event.src_path)
 
     def on_modified(self, event):
-        if not event.is_directory:
+        if not event.is_directory and os.path.basename(event.src_path) == "Dionaea.log":
             logger.info(f"Log file modified: {event.src_path}")
             self.process_file(event.src_path)
 
@@ -50,6 +52,12 @@ class LogHandler(FileSystemEventHandler):
         offset = self.file_offsets.get(filepath, 0)
         
         try:
+            # Check for file truncation/rotation
+            current_size = os.path.getsize(filepath)
+            if current_size < offset:
+                logger.info(f"File {filepath} was truncated or rotated. Resetting offset to 0.")
+                offset = 0
+            
             with open(filepath, 'r', encoding='utf-8') as f:
                 # Seek to last known position
                 f.seek(offset)
@@ -84,18 +92,30 @@ class LogHandler(FileSystemEventHandler):
                     if exists:
                         continue
 
+                    # Determine Protocol and Port
+                    protocol = parsed.get('protocol', 'smb')
+                    if not protocol:
+                        protocol = 'smb'
+                    protocol = protocol.lower()
+
+                    target_port = 445
+                    if protocol == 'http':
+                        target_port = 80
+                    elif protocol == 'smb':
+                        target_port = 445
+                    
                     # Create record
                     log_entry = AttackLog(
                         timestamp=parsed['timestamp'],
                         username=parsed['username'],
                         password=parsed['password'],
                         source_ip=parsed['source_ip'],
-                        target_port=445, # Default
-                        protocol="smb", # Default
+                        target_port=target_port,
+                        protocol=protocol,
                         connection_status="attempt",
                         sensor_name="dionaea-node-1",
                         raw_log=line,
-                        attack_type="smb" # Mapped from protocol
+                        attack_type=protocol # Mapped from protocol
                     )
                     db.add(log_entry)
                     new_entries += 1
@@ -124,7 +144,8 @@ class LogHandler(FileSystemEventHandler):
                 "timestamp": dt,
                 "username": data['username'],
                 "password": data['password'],
-                "source_ip": data['source_ip'].strip() if 'source_ip' in data else data['ipaddr'].strip()
+                "source_ip": data['source_ip'].strip() if 'source_ip' in data else data['ipaddr'].strip(),
+                "protocol": data.get('protocol', '').strip() if data.get('protocol') else None
             }
         except ValueError as e:
             logger.error(f"Date parsing error: {e} for line: {line}")
@@ -153,11 +174,11 @@ if __name__ == "__main__":
     init_db()
     
     # Monitor directory
-    MONITOR_DIR = "/tmp/Dionaea"
+    MONITOR_DIR = "/tmp"
     
     if not os.path.exists(MONITOR_DIR):
         os.makedirs(MONITOR_DIR)
         logger.info(f"Created directory: {MONITOR_DIR}")
         
-    logger.info(f"Starting Log Ingestor Service on {MONITOR_DIR}...")
+    logger.info(f"Starting Log Ingestor Service on {MONITOR_DIR} (filtering for Dionaea.log)...")
     start_monitoring(MONITOR_DIR)

@@ -72,6 +72,31 @@ class UserService:
 
     @staticmethod
     def create_user(db: Session, user_in: UserCreate, current_user_id: int) -> User:
+        # 1. Cleanup soft-deleted users (if any) with same username or email
+        # This prevents unique constraint violations if a user was soft-deleted previously
+        print(f"DEBUG: Checking for soft-deleted users: username={user_in.username}, email={user_in.email}")
+        stmt = select(User).where(
+            ((User.username == user_in.username) | (User.email == user_in.email)) & 
+            (User.deleted == True)
+        )
+        soft_deleted_users = db.scalars(stmt).all()
+        
+        if soft_deleted_users:
+            print(f"DEBUG: Found {len(soft_deleted_users)} soft-deleted users. Cleaning up...")
+            for deleted_user in soft_deleted_users:
+                print(f"DEBUG: Deleting user ID {deleted_user.id}")
+                # Delete related audit logs
+                db.execute(delete(AuditLog).where(AuditLog.user_id == deleted_user.id))
+                # Clear roles association
+                deleted_user.roles = []
+                # Hard delete
+                db.delete(deleted_user)
+            db.commit()
+            print("DEBUG: Cleanup committed.")
+        else:
+            print("DEBUG: No soft-deleted users found.")
+
+        # 2. Standard Checks
         if UserService.get_by_username(db, user_in.username):
             raise HTTPException(status_code=400, detail="Username already registered")
         
@@ -111,8 +136,24 @@ class UserService:
         if not user or user.deleted:
             raise HTTPException(status_code=404, detail="User not found")
             
+        # Protect 'admin' user from modification
+        if user.username == 'admin':
+            raise HTTPException(status_code=403, detail="Cannot modify the built-in admin user")
+
         if user_in.version is not None and user.version != user_in.version:
             raise HTTPException(status_code=409, detail="Conflict: Data has been modified by another user")
+
+        # Check username uniqueness if changing
+        if user_in.username and user_in.username != user.username:
+            existing_user = UserService.get_by_username(db, user_in.username)
+            if existing_user and existing_user.id != user_id:
+                raise HTTPException(status_code=400, detail="Username already registered")
+
+        # Check email uniqueness if changing
+        if user_in.email and user_in.email != user.email:
+             existing_email_user = db.scalar(select(User).where(User.email == user_in.email, User.deleted == False))
+             if existing_email_user and existing_email_user.id != user_id:
+                  raise HTTPException(status_code=400, detail="Email already registered")
 
         update_data = user_in.model_dump(exclude_unset=True)
         if "password" in update_data:
@@ -122,6 +163,8 @@ class UserService:
             role_ids = update_data.pop("role_ids")
             if role_ids is not None:
                 roles = db.scalars(select(Role).where(Role.id.in_(role_ids))).all()
+                if len(roles) != len(role_ids):
+                     raise HTTPException(status_code=400, detail="One or more roles not found")
                 user.roles = roles
 
         for field, value in update_data.items():
@@ -139,7 +182,7 @@ class UserService:
             user_id=current_user_id,
             action="UPDATE_USER",
             resource_id=str(user.id),
-            params=json.dumps(update_data),
+            params=json.dumps(update_data, default=str),
             result="SUCCESS"
         )
         db.add(audit)
@@ -150,21 +193,27 @@ class UserService:
     @staticmethod
     def delete_user(db: Session, user_id: int, current_user_id: int):
         user = db.get(User, user_id)
-        if not user or user.deleted:
+        if not user:
             raise HTTPException(status_code=404, detail="User not found")
-            
-        user.deleted = True
-        user.update_by = current_user_id
-        user.version += 1
         
-        db.add(user)
-        db.commit()
+        # Protect 'admin' user from deletion
+        if user.username == 'admin':
+             raise HTTPException(status_code=403, detail="Cannot delete the built-in admin user")
+
+        # Hard delete: Clear roles association
+        user.roles = []
         
-        # Audit
+        # Delete related audit logs (where user is the actor)
+        db.execute(delete(AuditLog).where(AuditLog.user_id == user_id))
+        
+        # Delete user
+        db.delete(user)
+        
+        # Record audit log for the deletion action
         audit = AuditLog(
             user_id=current_user_id,
             action="DELETE_USER",
-            resource_id=str(user.id),
+            resource_id=str(user_id),
             result="SUCCESS"
         )
         db.add(audit)

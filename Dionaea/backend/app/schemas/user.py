@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime
 from app.schemas.role import RoleResponse
@@ -13,6 +13,7 @@ class UserCreate(UserBase):
     role_ids: Optional[List[int]] = []
 
 class UserUpdate(BaseModel):
+    username: Optional[str] = Field(None, min_length=3, max_length=20, pattern="^[a-zA-Z0-9_]+$")
     email: Optional[EmailStr] = None
     status: Optional[str] = None
     password: Optional[str] = None

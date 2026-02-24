@@ -21,7 +21,8 @@ def read_logs(
     end_time: Optional[datetime] = None,
     source_ip: Optional[str] = None,
     username: Optional[str] = None,
-    password: Optional[str] = None
+    password: Optional[str] = None,
+    attack_type: Optional[str] = None
 ) -> Any:
     """
     Retrieve attack logs with filtering.
@@ -33,7 +34,8 @@ def read_logs(
         end_time=end_time,
         source_ip=source_ip,
         username=username,
-        password=password
+        password=password,
+        attack_type=attack_type
     )
     service = AttackLogService(db)
     logs, total = service.get_logs(filters)
@@ -74,3 +76,25 @@ def refresh_stats(
     """
     service = AttackLogService(db)
     return service.refresh_stats()
+
+@router.get("/stats/traffic")
+def get_traffic_analysis(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    source_ip: Optional[str] = None,
+    attack_type: Optional[str] = None
+) -> Any:
+    """
+    Get detailed traffic analysis statistics (Attack Distribution, Timeline).
+    Supports filtering.
+    """
+    filters = AttackLogFilter(
+        start_time=start_time,
+        end_time=end_time,
+        source_ip=source_ip,
+        attack_type=attack_type
+    )
+    service = AttackLogService(db)
+    return service.get_traffic_stats(filters)

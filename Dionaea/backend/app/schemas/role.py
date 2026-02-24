@@ -6,6 +6,7 @@ class RoleBase(BaseModel):
     name: str
     code: str
     description: Optional[str] = None
+    status: Optional[str] = "active"
 
 class RoleCreate(RoleBase):
     permission_ids: Optional[List[int]] = []
@@ -13,6 +14,7 @@ class RoleCreate(RoleBase):
 class RoleUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
+    status: Optional[str] = None
     permission_ids: Optional[List[int]] = None
 
 class RoleResponse(RoleBase):

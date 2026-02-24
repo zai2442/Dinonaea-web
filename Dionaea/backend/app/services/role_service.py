@@ -14,7 +14,8 @@ class RoleService:
         role = Role(
             name=role_in.name,
             code=role_in.code,
-            description=role_in.description
+            description=role_in.description,
+            status=role_in.status
         )
         
         if role_in.permission_ids:
@@ -31,11 +32,19 @@ class RoleService:
         role = db.get(Role, role_id)
         if not role:
             raise HTTPException(status_code=404, detail="Role not found")
-            
-        if role_in.name:
+        
+        # Check uniqueness if name is being updated
+        if role_in.name and role_in.name != role.name:
+            existing_role = db.scalar(select(Role).where(Role.name == role_in.name))
+            if existing_role:
+                 raise HTTPException(status_code=400, detail="Role with this name already exists")
             role.name = role_in.name
-        if role_in.description:
+
+        if role_in.description is not None:
             role.description = role_in.description
+            
+        if role_in.status:
+            role.status = role_in.status
             
         if role_in.permission_ids is not None:
             permissions = db.scalars(select(Permission).where(Permission.id.in_(role_in.permission_ids))).all()
@@ -48,16 +57,24 @@ class RoleService:
 
     @staticmethod
     def get_role(db: Session, role_id: int) -> Role:
-        return db.get(Role, role_id)
+        role = db.get(Role, role_id)
+        if not role:
+            raise HTTPException(status_code=404, detail="Role not found")
+        return role
 
     @staticmethod
     def get_roles(db: Session, skip: int = 0, limit: int = 100) -> list[Role]:
-        return db.scalars(select(Role).offset(skip).limit(limit)).all()
+        return db.scalars(select(Role).offset(skip).limit(limit)).unique().all()
 
     @staticmethod
     def delete_role(db: Session, role_id: int):
         role = db.get(Role, role_id)
         if not role:
             raise HTTPException(status_code=404, detail="Role not found")
+        
+        # Protect super_admin and user roles (basic roles)
+        if role.code in ['super_admin', 'user', 'admin']:
+             raise HTTPException(status_code=403, detail="Cannot delete system roles")
+             
         db.delete(role)
         db.commit()

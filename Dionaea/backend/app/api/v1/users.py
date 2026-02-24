@@ -37,9 +37,17 @@ def read_user(user_id: int, db: Session = Depends(get_db), current_user: User = 
 
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    # Permission check: Only Super Admin
+    if not any(role.code == "super_admin" for role in current_user.roles):
+        raise HTTPException(status_code=403, detail="Only Super Admin can perform this action")
+        
     return UserService.update_user(db, user_id, user, current_user_id=current_user.id)
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    # Permission check: Only Super Admin
+    if not any(role.code == "super_admin" for role in current_user.roles):
+        raise HTTPException(status_code=403, detail="Only Super Admin can perform this action")
+        
     UserService.delete_user(db, user_id, current_user_id=current_user.id)
     return None

@@ -3,12 +3,15 @@ from app.api.v1.users import router as users_router
 from app.api.v1.data import router as data_router
 from app.api.v1.logs import router as logs_router
 from app.api.v1.roles import router as roles_router
+from app.api.v1.nodes import router as nodes_router
 from app.core.config import settings
 from app.db.database import engine, Base
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+import asyncio
+from app.services.monitor import start_monitoring
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -17,6 +20,10 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(start_monitoring())
 
 # CORS
 if settings.BACKEND_CORS_ORIGINS:
@@ -33,6 +40,7 @@ app.include_router(users_router, prefix=f"{settings.API_V1_STR}/users", tags=["u
 app.include_router(roles_router, prefix=f"{settings.API_V1_STR}/roles", tags=["roles"])
 app.include_router(data_router, prefix=f"{settings.API_V1_STR}/data", tags=["data"])
 app.include_router(logs_router, prefix=f"{settings.API_V1_STR}/logs", tags=["logs"])
+app.include_router(nodes_router, prefix=f"{settings.API_V1_STR}/nodes", tags=["nodes"])
 
 # Mount static files
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend_login_demo")

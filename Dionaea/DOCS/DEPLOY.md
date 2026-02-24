@@ -74,3 +74,29 @@ const CONFIG = {
   - TOP 5 用户名占比 (饼图)
   - TOP 20 密码词云
 - **统计摘要**: 显示最频繁的攻击 IP、用户名和密码 (与 `Login_statistics.sh` 联动)。
+
+## 6. 回滚方案 (Rollback Plan)
+
+### 6.1 数据库回滚
+如果用户管理功能出现严重数据问题（如误删管理员），请执行以下步骤：
+1. **停止服务**: `systemctl stop dionaea-backend`
+2. **恢复备份**:
+   - 如果使用 SQLite: 还原 `.db` 文件备份。
+   - 如果使用 PostgreSQL: `pg_restore -d dbname backup_file`
+3. **数据修正**:
+   - 手动插入 Super Admin 账号（如所有管理员被删）：
+     ```sql
+     -- Password is 'password' (bcrypt hash example)
+     INSERT INTO users (username, password_hash, status, version, deleted) VALUES ('admin', '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxwKc.6q0r0r0r0r0r0r0r0r0r0r', 'active', 1, 0);
+     -- 关联角色略
+     ```
+
+### 6.2 代码回滚
+1. **Git 回滚**:
+   ```bash
+   git checkout <previous_commit_hash>
+   ```
+2. **重启服务**:
+   ```bash
+   systemctl restart dionaea-backend
+   ```

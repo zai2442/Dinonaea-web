@@ -169,7 +169,7 @@
                 <div class="bg-white rounded-lg shadow overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                         <h3 class="text-lg font-medium text-gray-800">用户列表</h3>
-                        <button class="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary-hover transition-colors">
+                        <button id="btn-add-user" class="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary-hover transition-colors hidden">
                             <i class="fas fa-plus mr-2"></i> 新增用户
                         </button>
                     </div>
@@ -193,17 +193,30 @@
                 </div>
             </div>
 
-            <!-- Role Management View (Hidden by default) -->
+            <!-- Role Management View -->
             <div id="view-roles" class="view-section hidden">
                  <div class="bg-white rounded-lg shadow overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                         <h3 class="text-lg font-medium text-gray-800">角色与权限</h3>
-                        <button class="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary-hover transition-colors">
+                        <button id="btn-add-role" class="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary-hover transition-colors hidden">
                             <i class="fas fa-plus mr-2"></i> 新增角色
                         </button>
                     </div>
-                    <div class="p-6">
-                        <p class="text-gray-500">角色管理功能开发中...</p>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色名称</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">代码</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">描述</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="roles-table-body">
+                                <!-- Roles will be injected here -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -216,13 +229,15 @@
                     </div>
                     <div class="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
                         <input type="text" id="filter-ip" placeholder="源IP" class="border p-2 rounded text-sm">
-                        <input type="text" id="filter-user" placeholder="用户名" class="border p-2 rounded text-sm">
                         <select id="filter-protocol" class="border p-2 rounded text-sm bg-white">
                             <option value="">所有协议</option>
                             <option value="smb">SMB</option>
                             <option value="http">HTTP</option>
+                            <option value="ftp">FTP</option>
+                            <option value="mssql">MSSQL</option>
                         </select>
-                        <input type="date" id="filter-start-date" class="border p-2 rounded text-sm">
+                        <input type="date" id="filter-start-date" class="border p-2 rounded text-sm" placeholder="开始日期">
+                        <input type="date" id="filter-end-date" class="border p-2 rounded text-sm" placeholder="结束日期">
                         <button id="btn-search-logs" class="bg-primary text-white px-4 py-2 rounded hover:bg-primary-hover">查询</button>
                     </div>
                 </div>
@@ -236,6 +251,7 @@
                             <thead class="bg-gray-50 sticky top-0">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间戳</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">节点</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">源IP</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户名</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">密码</th>
@@ -305,7 +321,376 @@
                 </div>
             </div>
 
+            <!-- Traffic Analysis View -->
+            <div id="view-traffic-analysis" class="view-section hidden">
+                <!-- Analysis Filters -->
+                <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                    <div class="px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-lg font-medium text-gray-800">流量筛选</h3>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+                        <input type="text" id="analysis-filter-ip" placeholder="源IP" class="border p-2 rounded text-sm">
+                        <select id="analysis-filter-type" class="border p-2 rounded text-sm bg-white">
+                            <option value="">所有攻击类型</option>
+                            <option value="SQL">SQL 注入</option>
+                            <option value="XSS">XSS 攻击</option>
+                            <option value="Path Traversal">目录遍历/文件包含</option>
+                            <option value="Command Injection">命令执行</option>
+                            <option value="Scanner">扫描器/工具</option>
+                            <option value="SSRF">SSRF 攻击</option>
+                            <option value="Log4Shell">Log4Shell</option>
+                            <option value="smb">SMB (协议)</option>
+                            <option value="http">HTTP (协议)</option>
+                            <option value="ftp">FTP (协议)</option>
+                            <option value="mssql">MSSQL (协议)</option>
+                        </select>
+                        <input type="date" id="analysis-filter-start-date" class="border p-2 rounded text-sm" placeholder="开始日期">
+                        <input type="date" id="analysis-filter-end-date" class="border p-2 rounded text-sm" placeholder="结束日期">
+                        <button id="btn-search-analysis" class="bg-primary text-white px-4 py-2 rounded hover:bg-primary-hover">分析查询</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Attack Distribution Pie Chart -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-4 ml-2">攻击类型分布</h4>
+                        <div id="chart-attack-dist" class="w-full h-80"></div>
+                    </div>
+                    
+                    <!-- Traffic Timeline Line Chart -->
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-4 ml-2">流量趋势 (24H)</h4>
+                        <div id="chart-traffic-timeline" class="w-full h-80"></div>
+                    </div>
+                </div>
+
+                <!-- Recent Suspicious Logs -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-800">最近可疑流量</h3>
+                        <button id="btn-refresh-analysis" class="text-sm text-primary hover:underline hidden">
+                            <i class="fas fa-sync-alt mr-1"></i> 刷新
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">节点</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">攻击类型</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">源IP</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payload预览</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="analysis-logs-body">
+                                <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">加载中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Settings / Nodes View -->
+            <div id="view-settings" class="view-section hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-800">节点状态监控</h3>
+                        <div class="flex space-x-2">
+                             <input type="text" id="search-node" placeholder="搜索IP或名称..." class="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:border-primary">
+                             <button id="btn-add-node" class="px-4 py-2 bg-primary text-white text-sm rounded hover:bg-primary-hover transition-colors">
+                                <i class="fas fa-plus mr-2"></i> 添加节点
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Summary -->
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-gray-100">
+                         <div class="p-4 bg-green-50 rounded border border-green-100 text-center">
+                             <div class="text-2xl font-bold text-green-600" id="nodes-online">0</div>
+                             <div class="text-sm text-gray-500">在线节点</div>
+                         </div>
+                         <div class="p-4 bg-red-50 rounded border border-red-100 text-center">
+                             <div class="text-2xl font-bold text-red-600" id="nodes-offline">0</div>
+                             <div class="text-sm text-gray-500">离线节点</div>
+                         </div>
+                         <div class="p-4 bg-blue-50 rounded border border-blue-100 text-center">
+                             <div class="text-2xl font-bold text-blue-600" id="nodes-total">0</div>
+                             <div class="text-sm text-gray-500">总节点数</div>
+                         </div>
+                         <div class="p-4 bg-yellow-50 rounded border border-yellow-100 text-center">
+                             <div class="text-2xl font-bold text-yellow-600" id="nodes-warning">0</div>
+                             <div class="text-sm text-gray-500">CPU警告 (>80%)</div>
+                         </div>
+                    </div>
+            
+                    <!-- Charts Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 px-6">
+                        <div class="bg-white rounded-lg border border-gray-100 p-4 h-80">
+                            <h4 class="text-md font-medium text-gray-700 mb-2">节点状态分布</h4>
+                            <div id="chart-node-status" class="w-full h-full"></div>
+                        </div>
+                        <div class="bg-white rounded-lg border border-gray-100 p-4 h-80">
+                            <h4 class="text-md font-medium text-gray-700 mb-2">节点分组统计</h4>
+                            <div id="chart-node-group" class="w-full h-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- Node List -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">名称 / 分组</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP地址</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">CPU占用</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">最后在线</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200" id="nodes-table-body">
+                                <!-- Nodes injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Add Node Modal -->
+    <div id="add-node-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-800">添加节点</h3>
+                <button id="close-add-node-modal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="add-node-form">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">节点名称</label>
+                        <input type="text" id="node-name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">IP地址</label>
+                        <input type="text" id="node-ip" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" required placeholder="IPv4 or IPv6">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">端口</label>
+                        <input type="number" id="node-port" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" value="80">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">分组</label>
+                        <select id="node-group" class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white">
+                            <option value="default">默认分组</option>
+                            <option value="honeypot">蜜罐节点</option>
+                            <option value="server">服务器</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" id="cancel-add-node" class="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-hover">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div id="add-user-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-800">新增用户</h3>
+                <button id="close-add-modal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="add-user-form">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                        <input type="text" id="add-username" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" required>
+                        <p class="text-xs text-gray-500 mt-1">3-20字符，仅允许字母数字下划线</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                        <input type="email" id="add-email" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                        <input type="password" id="add-password" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" minlength="6" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">角色</label>
+                        <select id="add-role" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary bg-white">
+                            <!-- Roles populated by JS -->
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                        <div class="flex items-center">
+                            <label class="inline-flex items-center cursor-pointer" for="add-status">
+                                <input type="checkbox" id="add-status" class="sr-only peer" checked>
+                                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                <span class="ms-3 text-sm font-medium text-gray-700" id="add-status-label">Active</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" id="cancel-add" class="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-hover">创建用户</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="edit-user-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-800">编辑用户</h3>
+                <button id="close-edit-modal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="edit-user-form">
+                    <input type="hidden" id="edit-user-id">
+                    <input type="hidden" id="edit-user-version">
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                        <input type="text" id="edit-username" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" required>
+                        <p class="text-xs text-gray-500 mt-1">3-20字符，仅允许字母数字下划线</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
+                        <input type="email" id="edit-email" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">角色</label>
+                        <select id="edit-role" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary bg-white">
+                            <!-- Roles populated by JS -->
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                        <div class="flex items-center">
+                            <label class="inline-flex items-center cursor-pointer" for="edit-status">
+                                <input type="checkbox" id="edit-status" class="sr-only peer" checked>
+                                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                <span class="ms-3 text-sm font-medium text-gray-700" id="edit-status-label">Active</span>
+                            </label>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">禁用后用户将被立即锁定无法登录</p>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" id="cancel-edit" class="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-hover">保存修改</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete User Modal -->
+    <div id="delete-user-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-sm mx-4">
+            <div class="p-6 text-center">
+                <div class="w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">确认删除用户?</h3>
+                <p class="text-sm text-gray-500 mb-6">
+                    将永久删除用户 <span id="delete-username-display" class="font-bold text-gray-800"></span> 的全部信息且不可恢复，包括权限、日志和会话。
+                </p>
+                <div class="flex justify-center gap-3">
+                    <button id="cancel-delete" class="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                    <button id="confirm-delete" class="px-4 py-2 bg-red-500 text-white rounded text-sm hover:bg-red-600">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Modal -->
+    <div id="role-modal" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-800" id="role-modal-title">角色配置</h3>
+                <button id="close-role-modal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <form id="role-form">
+                    <input type="hidden" id="role-id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">角色名称</label>
+                            <input type="text" id="role-name" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">角色代码</label>
+                            <input type="text" id="role-code" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" required>
+                            <p class="text-xs text-gray-500 mt-1">唯一标识，如: super_admin</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                        <textarea id="role-description" class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-primary" rows="2"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">状态</label>
+                        <div class="flex items-center">
+                            <label class="inline-flex items-center cursor-pointer" for="role-status">
+                                <input type="checkbox" id="role-status" class="sr-only peer" checked>
+                                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                <span class="ms-3 text-sm font-medium text-gray-700" id="role-status-label">Active</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-medium text-gray-700">权限配置</label>
+                            <div class="text-sm">
+                                <button type="button" id="btn-select-all-perms" class="text-primary hover:underline mr-2">全选</button>
+                                <button type="button" id="btn-deselect-all-perms" class="text-gray-500 hover:underline">取消全选</button>
+                            </div>
+                        </div>
+                        <div class="border border-gray-200 rounded-lg p-4 max-h-60 overflow-y-auto bg-gray-50" id="permissions-container">
+                            <!-- Permissions injected here -->
+                            <p class="text-gray-500 text-center">加载权限中...</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" id="cancel-role" class="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-white rounded text-sm hover:bg-primary-hover">保存配置</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <script src="assets/js/dashboard.js"></script>

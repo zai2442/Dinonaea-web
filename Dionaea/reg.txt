@@ -1,0 +1,21 @@
+SQL 注入（SQLi）
+(?i)(\bUNION\b.*\bSELECT\b|\bSELECT\b.*\bFROM\b|\bINSERT\b.*\bINTO\b|\bUPDATE\b.*\bSET\b|\bDELETE\b.*\bFROM\b|\bSELECT\b(\s+|\+)\d+)
+(?i)(or\s+1=1|and\s+1=1|'\s*or\s*'1'='1|--|#|/\*.*\*/)
+(?i)(sleep\s*\(|benchmark\s*\(|load_file\s*\(|into\s+outfile)
+XSS 攻击
+(?i)<\s*script.*?>.*?<\s*/\s*script\s*>
+(?i)on\w+\s*=
+(?i)javascript:
+文件包含 / 路径遍历
+(\.\./|\.\.\\)+
+(?i)/(etc/passwd|proc/self/environ|windows/win.ini)
+命令执行攻击
+(;|\|\||&&|`|\$\().*
+(?i)(;|\||&&)\s*(cat|ls|whoami|id|uname|wget|curl|nc|bash|sh)
+常见扫描器 / 黑客工具 UA
+(?i)(sqlmap|nikto|acunetix|nmap|dirbuster|gobuster|wpscan)
+(?i)(masscan|zgrab|python-requests|curl|libwww-perl)
+SSRF 攻击
+(?i)(127\.0\.0\.1|localhost|169\.254\.169\.254|0\.0\.0\.0)
+Log4Shell（Log4j）
+\$\{jndi:(ldap|rmi|dns|http)s?:\/\/.*\}

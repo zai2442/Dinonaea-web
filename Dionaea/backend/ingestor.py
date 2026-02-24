@@ -4,9 +4,12 @@ from datetime import datetime
 import time
 import os
 import sys
+import socket
 from sqlalchemy.orm import Session
 from app.db.database import SessionLocal, engine, Base
 from app.models.attack_log import AttackLog
+from app.models.node import Node
+from app.core.rules import RuleEngine
 from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -28,12 +31,57 @@ LOG_PATTERN = re.compile(
     r"(?:\s+Protocol:(?P<protocol>.*))?$"
 )
 
+# Initialize Rule Engine
+REG_FILE_PATH = "/home/kali/Dionaea/Dinonaea-web/Dionaea/reg.txt"
+rule_engine = RuleEngine(REG_FILE_PATH)
+
 # Date format in log
 DATE_FORMAT = "%a, %d %b %Y %H:%M:%S"
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 class LogHandler(FileSystemEventHandler):
     def __init__(self):
         self.file_offsets = {}
+        self.sensor_name = self._get_sensor_name()
+
+    def _get_sensor_name(self):
+        db = SessionLocal()
+        try:
+            ip = get_local_ip()
+            logger.info(f"Resolving sensor name for IP: {ip}")
+            node = db.query(Node).filter(Node.ip_address == ip).first()
+            if node:
+                logger.info(f"Found existing node: {node.name}")
+                return node.name
+            
+            # Create if not exists
+            new_node = Node(
+                name=f"Dionaea-Node-{ip}",
+                ip_address=ip,
+                port=80,
+                status="online",
+                description="Auto-created by ingestor",
+                is_active=True
+            )
+            db.add(new_node)
+            db.commit()
+            db.refresh(new_node)
+            logger.info(f"Created new node for local IP: {ip}")
+            return new_node.name
+        except Exception as e:
+            logger.error(f"Error resolving sensor name: {e}")
+            return "unknown-sensor"
+        finally:
+            db.close()
 
     def on_created(self, event):
         if not event.is_directory and os.path.basename(event.src_path) == "Dionaea.log":
@@ -104,6 +152,10 @@ class LogHandler(FileSystemEventHandler):
                     elif protocol == 'smb':
                         target_port = 445
                     
+                    # Match against regex rules
+                    matched_category = rule_engine.match(line)
+                    attack_type = matched_category if matched_category else protocol
+
                     # Create record
                     log_entry = AttackLog(
                         timestamp=parsed['timestamp'],
@@ -113,9 +165,9 @@ class LogHandler(FileSystemEventHandler):
                         target_port=target_port,
                         protocol=protocol,
                         connection_status="attempt",
-                        sensor_name="dionaea-node-1",
+                        sensor_name=self.sensor_name,
                         raw_log=line,
-                        attack_type=protocol # Mapped from protocol
+                        attack_type=attack_type # Mapped from regex or protocol
                     )
                     db.add(log_entry)
                     new_entries += 1

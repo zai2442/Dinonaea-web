@@ -1,7 +1,24 @@
 SQL 注入（SQLi）
-(?i)(\bUNION\b.*\bSELECT\b|\bSELECT\b.*\bFROM\b|\bINSERT\b.*\bINTO\b|\bUPDATE\b.*\bSET\b|\bDELETE\b.*\bFROM\b|\bSELECT\b(\s+|\+)\d+)
-(?i)(or\s+1=1|and\s+1=1|'\s*or\s*'1'='1|--|#|/\*.*\*/)
-(?i)(sleep\s*\(|benchmark\s*\(|load_file\s*\(|into\s+outfile)
+(?i)SELECT
+(?i)UNION
+(?i)INSERT
+(?i)UPDATE
+(?i)DELETE
+(?i)DROP
+(?i)ALTER
+(?i)TRUNCATE
+(?i)CREATE
+(?i)REPLACE
+(?i)or\s+1=1
+(?i)and\s+1=1
+(?i)'\s*or\s*'1'='1
+--
+#
+/\*.*\*/
+(?i)sleep\s*\(
+(?i)benchmark\s*\(
+(?i)load_file\s*\(
+(?i)into\s+outfile
 XSS 攻击
 (?i)<\s*script.*?>.*?<\s*/\s*script\s*>
 (?i)on\w+\s*=

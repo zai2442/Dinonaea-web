@@ -6,11 +6,11 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database
-    DATABASE_URL: str = "postgresql://dionaea_user:dionaea_pass@localhost:5432/dionaea_db"
+    DATABASE_URL: str = "postgresql://dionaea_user:dionaea_pass@127.0.0.1:5432/dionaea_db"
     
     # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_HOST: str = "localhost"
+    REDIS_URL: str = "redis://127.0.0.1:6379/0"
+    REDIS_HOST: str = "127.0.0.1"
     REDIS_PORT: int = 6379
     
     # Security

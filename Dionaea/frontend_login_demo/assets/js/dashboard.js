@@ -34,6 +34,9 @@ const logsPerPage = 50;
         renderUserProfile(currentUser);
         renderSidebar(currentUser);
         
+        // Setup Modal Listeners
+        setupModalEventListeners();
+        
         // Initial View
         loadDashboardStats();
         
@@ -89,8 +92,8 @@ async function fetchLogs(skip = 0, limit = 50, filters = {}) {
     
     if (filters.ip) params.append('source_ip', filters.ip);
     if (filters.protocol) params.append('attack_type', filters.protocol);
-    if (filters.startDate) params.append('start_time', new Date(filters.startDate).toISOString());
-    if (filters.endDate) params.append('end_time', new Date(filters.endDate).toISOString());
+    if (filters.startDate) params.append('start_time', filters.startDate);
+    if (filters.endDate) params.append('end_time', filters.endDate);
 
     const response = await fetch(`${CONFIG.API_BASE}/data/logs?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -119,6 +122,47 @@ async function fetchStatsSummary() {
     throw new Error('Failed to fetch summary');
 }
 
+
+// --- Log Detail Modal Logic ---
+function openLogDetailModal(content) {
+    const modal = document.getElementById('log-detail-modal');
+    const contentDiv = document.getElementById('log-detail-content');
+    
+    contentDiv.textContent = content || '暂无原始流量数据';
+    modal.classList.remove('hidden');
+    
+    // Body scroll lock
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLogDetailModal() {
+    const modal = document.getElementById('log-detail-modal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+function setupModalEventListeners() {
+    // Log Detail Modal
+    document.getElementById('close-log-modal').addEventListener('click', closeLogDetailModal);
+    document.getElementById('btn-close-log-footer').addEventListener('click', closeLogDetailModal);
+    
+    document.getElementById('log-detail-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'log-detail-modal') closeLogDetailModal();
+    });
+
+    // Copy functionality
+    document.getElementById('btn-copy-log').addEventListener('click', () => {
+        const content = document.getElementById('log-detail-content').textContent;
+        navigator.clipboard.writeText(content).then(() => {
+            const btn = document.getElementById('btn-copy-log');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check mr-1"></i> 已复制';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+            }, 2000);
+        });
+    });
+}
 
 // Rendering
 function renderUserProfile(user) {
@@ -166,10 +210,10 @@ function renderSidebar(user) {
         if (hasPermission) {
             const link = document.createElement('a');
             link.href = '#';
-            link.className = 'group flex items-center px-4 py-3 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-primary transition-colors mb-1';
-            if (item.id === 'nav-dashboard') link.classList.add('bg-blue-50', 'text-primary'); // Active by default
+            link.className = 'sidebar-item text-gray-600';
+            if (item.id === 'nav-dashboard') link.classList.add('active'); // Active by default
             
-            link.innerHTML = `<i class="${item.icon} mr-3 text-gray-400 group-hover:text-primary transition-colors"></i> ${item.label}`;
+            link.innerHTML = `<i class="${item.icon}"></i> <span>${item.label}</span>`;
             link.dataset.view = item.view;
             
             link.addEventListener('click', (e) => {
@@ -217,12 +261,12 @@ function switchView(viewId, activeLink) {
 
     // Update Sidebar Active State
     document.querySelectorAll('#sidebar-menu a').forEach(a => {
-        a.classList.remove('bg-blue-50', 'text-primary');
+        a.classList.remove('active');
         a.classList.add('text-gray-600');
     });
     if (activeLink) {
         activeLink.classList.remove('text-gray-600');
-        activeLink.classList.add('bg-blue-50', 'text-primary');
+        activeLink.classList.add('active');
     }
 }
 
@@ -349,14 +393,26 @@ async function loadLogs(resetPage = false) {
 
         logs.forEach(log => {
             const tr = document.createElement('tr');
+            tr.className = 'hover:bg-blue-50 transition-all cursor-pointer group relative';
+            tr.title = '点击查看完整流量包详情';
+            
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(log.timestamp).toLocaleString()}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.sensor_name || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${log.source_ip || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.username || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${log.password || '-'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${(log.protocol || 'SMB').toUpperCase()}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex items-center justify-between">
+                    <span>${(log.protocol || 'SMB').toUpperCase()}</span>
+                    <i class="fas fa-external-link-alt text-gray-300 group-hover:text-primary transition-colors text-xs ml-2"></i>
+                </td>
             `;
+
+            // Click event to show modal
+            tr.addEventListener('click', () => {
+                openLogDetailModal(log.raw_log);
+            });
+
             tbody.appendChild(tr);
         });
 
@@ -523,8 +579,8 @@ async function loadTrafficAnalysis() {
         const params = new URLSearchParams();
         if (filters.ip) params.append('source_ip', filters.ip);
         if (filters.type) params.append('attack_type', filters.type);
-        if (filters.startDate) params.append('start_time', new Date(filters.startDate).toISOString());
-        if (filters.endDate) params.append('end_time', new Date(filters.endDate).toISOString());
+        if (filters.startDate) params.append('start_time', filters.startDate);
+        if (filters.endDate) params.append('end_time', filters.endDate);
 
         // 1. Fetch Stats (Pass filters if backend supports, currently backend might not support filtering stats yet, but let's send for future)
         // Note: The current /stats/traffic endpoint in backend does not accept filters yet.
@@ -618,20 +674,31 @@ function renderAnalysisLogs(logs) {
     logs.forEach(log => {
         // Highlight logic: if attack_type is not simple protocol, treat as suspicious/high-risk
         const isSuspicious = !['smb', 'http', 'ftp', 'mssql'].includes((log.attack_type || '').toLowerCase());
-        const rowClass = isSuspicious ? 'bg-red-50' : '';
+        const rowClass = isSuspicious ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-blue-50';
         const typeClass = isSuspicious ? 'text-red-600 font-bold' : 'text-gray-600';
         
         const tr = document.createElement('tr');
-        tr.className = rowClass;
+        tr.className = `${rowClass} transition-all cursor-pointer group`;
+        tr.title = '点击查看完整流量包详情';
+        
         tr.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(log.timestamp).toLocaleString()}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${log.sensor_name || '-'}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm ${typeClass}">${log.attack_type || 'Unknown'}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${log.source_ip}</td>
-            <td class="px-6 py-4 text-sm text-gray-500 font-mono truncate max-w-xs" title="${log.raw_log || ''}">
-                ${(log.raw_log || '').substring(0, 50)}...
+            <td class="px-6 py-4 text-sm text-gray-500 font-mono truncate max-w-xs">
+                <div class="flex items-center justify-between">
+                    <span class="truncate">${(log.raw_log || '').substring(0, 50)}...</span>
+                    <i class="fas fa-external-link-alt text-gray-300 group-hover:text-primary transition-colors text-xs ml-2 flex-shrink-0"></i>
+                </div>
             </td>
         `;
+
+        // Click event to show modal
+        tr.addEventListener('click', () => {
+            openLogDetailModal(log.raw_log);
+        });
+
         tbody.appendChild(tr);
     });
 }

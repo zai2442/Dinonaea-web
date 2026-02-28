@@ -21,15 +21,19 @@ logging.basicConfig(
 logger = logging.getLogger("LogIngestor")
 
 # Log format regex
-# Example: "Wed, 18 Feb 2026 20:08:41  Username:1 Password:1 ipaddr:127.0.0.1"
-# Example 2: "Wed, 18 Feb 2026 20:08:41  Username:1 Password:1 ipaddr:127.0.0.1 Protocol:HTTP"
+# Flexible pattern to capture ALL traffic
+# It will first capture timestamp and the rest of the message
+# Then we try to extract structured data from the message
 LOG_PATTERN = re.compile(
-    r"(?P<timestamp>[\w]{3}, \d{2} [\w]{3} \d{4} \d{2}:\d{2}:\d{2})\s+"
-    r"Username:(?P<username>.*?)\s+"
-    r"Password:(?P<password>.*?)\s+"
-    r"ipaddr:(?P<ipaddr>.*?)"
-    r"(?:\s+Protocol:(?P<protocol>.*))?$"
+    r"(?P<timestamp>[\w]{3}, \d{2} [\w]{3} \d{4} \d{2}:\d{2}:\d{2})\s+(?P<content>.*)$"
 )
+
+# Sub-patterns for structured data
+USERNAME_PATTERN = re.compile(r"Username:(?P<username>.*?)(?:\s+|$)")
+PASSWORD_PATTERN = re.compile(r"Password:(?P<password>.*?)(?:\s+|$)")
+IPADDR_PATTERN = re.compile(r"ipaddr:(?P<ipaddr>.*?)(?:\s+|$)")
+PROTOCOL_PATTERN = re.compile(r"Protocol:(?P<protocol>.*?)(?:\s+|$)")
+HTTP_NOT_FOUND_PATTERN = re.compile(r"Not Found:\s+(?P<path>.*)$")
 
 # Initialize Rule Engine
 REG_FILE_PATH = "/home/kali/Dionaea/Dinonaea-web/Dionaea/reg.txt"
@@ -98,24 +102,13 @@ class LogHandler(FileSystemEventHandler):
             return
 
         offset = self.file_offsets.get(filepath, 0)
-        
         try:
-            # Check for file truncation/rotation
-            current_size = os.path.getsize(filepath)
-            if current_size < offset:
-                logger.info(f"File {filepath} was truncated or rotated. Resetting offset to 0.")
-                offset = 0
-            
             with open(filepath, 'r', encoding='utf-8') as f:
-                # Seek to last known position
                 f.seek(offset)
                 lines = f.readlines()
-                
-                # Update offset
-                self.file_offsets[filepath] = f.tell()
-                
                 if lines:
                     self.ingest_lines(lines)
+                    self.file_offsets[filepath] = f.tell()
         except Exception as e:
             logger.error(f"Error processing file {filepath}: {e}")
 
@@ -134,7 +127,8 @@ class LogHandler(FileSystemEventHandler):
                     exists = db.query(AttackLog).filter(
                         AttackLog.timestamp == parsed['timestamp'],
                         AttackLog.username == parsed['username'],
-                        AttackLog.source_ip == parsed['source_ip']
+                        AttackLog.source_ip == parsed['source_ip'],
+                        AttackLog.raw_log == line
                     ).first()
                     
                     if exists:
@@ -156,6 +150,11 @@ class LogHandler(FileSystemEventHandler):
                     matched_category = rule_engine.match(line)
                     attack_type = matched_category if matched_category else protocol
 
+                    # Modify raw_log if it contains "Not Found" for consistent display
+                    raw_log = line
+                    if "Not Found:" in raw_log:
+                        raw_log = raw_log.replace("Not Found:", f"{protocol.upper()}:")
+
                     # Create record
                     log_entry = AttackLog(
                         timestamp=parsed['timestamp'],
@@ -166,7 +165,7 @@ class LogHandler(FileSystemEventHandler):
                         protocol=protocol,
                         connection_status="attempt",
                         sensor_name=self.sensor_name,
-                        raw_log=line,
+                        raw_log=raw_log,
                         attack_type=attack_type # Mapped from regex or protocol
                     )
                     db.add(log_entry)
@@ -190,14 +189,47 @@ class LogHandler(FileSystemEventHandler):
             return None
         
         data = match.groupdict()
+        content = data['content']
+        
         try:
             dt = datetime.strptime(data['timestamp'], DATE_FORMAT)
+            
+            # Default values
+            username = "-"
+            password = "-"
+            source_ip = "unknown"
+            protocol = "smb"
+            
+            # Try to extract structured fields
+            u_match = USERNAME_PATTERN.search(content)
+            p_match = PASSWORD_PATTERN.search(content)
+            i_match = IPADDR_PATTERN.search(content)
+            pr_match = PROTOCOL_PATTERN.search(content)
+            
+            if u_match: username = u_match.group('username')
+            if p_match: password = p_match.group('password')
+            if i_match: source_ip = i_match.group('ipaddr').strip()
+            if pr_match: protocol = pr_match.group('protocol').strip()
+            
+            # Fallback for "Not Found" logs
+            if username == "-" and "Not Found:" in content:
+                nf_match = HTTP_NOT_FOUND_PATTERN.search(content)
+                if nf_match:
+                    protocol = "http"
+                    username = protocol.upper()
+                    password = nf_match.group('path')
+
+            # Generic fallback for any other info
+            if username == "-" and password == "-":
+                username = protocol.upper()
+                password = content[:255] # Limit length
+
             return {
                 "timestamp": dt,
-                "username": data['username'],
-                "password": data['password'],
-                "source_ip": data['source_ip'].strip() if 'source_ip' in data else data['ipaddr'].strip(),
-                "protocol": data.get('protocol', '').strip() if data.get('protocol') else None
+                "username": username,
+                "password": password,
+                "source_ip": source_ip,
+                "protocol": protocol
             }
         except ValueError as e:
             logger.error(f"Date parsing error: {e} for line: {line}")
@@ -210,6 +242,13 @@ def init_db():
 
 def start_monitoring(path):
     event_handler = LogHandler()
+    
+    # Process existing log file immediately on start
+    log_file = os.path.join(path, "Dionaea.log")
+    if os.path.exists(log_file):
+        logger.info(f"Processing existing log file: {log_file}")
+        event_handler.process_file(log_file)
+        
     observer = Observer()
     observer.schedule(event_handler, path, recursive=False)
     observer.start()

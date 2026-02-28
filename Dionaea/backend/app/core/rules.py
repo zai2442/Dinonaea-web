@@ -30,9 +30,9 @@ class RuleEngine:
                     continue
                 
                 # Heuristic to detect category vs regex
-                # If it starts with (?i) or contains typical regex chars, it's a rule
-                # Otherwise it's a category
-                is_regex = line.startswith('(?i)') or line.startswith('(') or line.startswith('\\') or line.startswith('[')
+                # A regex rule in our system MUST start with (?i) or a backslash \ or a bracket [ or a parenthesis (
+                # or contain other common regex operators like *, +, ?, |, ^, $, #, -
+                is_regex = line.startswith('(?i)') or any(c in line for c in '()*+?\\|^$[]{}#') or line.startswith('--')
                 
                 if not is_regex:
                     current_category = line

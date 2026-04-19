@@ -53,8 +53,17 @@ const logsPerPage = 50;
     }
 
     // 3. Event Listeners
-    setupEventListeners();
-    setupLogEventListeners();
+    try {
+        setupEventListeners();
+    } catch (e) {
+        console.error('Error in setupEventListeners:', e);
+    }
+    
+    try {
+        setupLogEventListeners();
+    } catch (e) {
+        console.error('Error in setupLogEventListeners:', e);
+    }
 });
 
 // API Calls
@@ -143,25 +152,37 @@ function closeLogDetailModal() {
 
 function setupModalEventListeners() {
     // Log Detail Modal
-    document.getElementById('close-log-modal').addEventListener('click', closeLogDetailModal);
-    document.getElementById('btn-close-log-footer').addEventListener('click', closeLogDetailModal);
+    const btnCloseModal = document.getElementById('close-log-modal');
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', closeLogDetailModal);
+    }
     
-    document.getElementById('log-detail-modal').addEventListener('click', (e) => {
-        if (e.target.id === 'log-detail-modal') closeLogDetailModal();
-    });
+    const btnCloseFooter = document.getElementById('btn-close-log-footer');
+    if (btnCloseFooter) {
+        btnCloseFooter.addEventListener('click', closeLogDetailModal);
+    }
+    
+    const modalDetail = document.getElementById('log-detail-modal');
+    if (modalDetail) {
+        modalDetail.addEventListener('click', (e) => {
+            if (e.target.id === 'log-detail-modal') closeLogDetailModal();
+        });
+    }
 
     // Copy functionality
-    document.getElementById('btn-copy-log').addEventListener('click', () => {
-        const content = document.getElementById('log-detail-content').textContent;
-        navigator.clipboard.writeText(content).then(() => {
-            const btn = document.getElementById('btn-copy-log');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check mr-1"></i> 已复制';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-            }, 2000);
+    const btnCopyLog = document.getElementById('btn-copy-log');
+    if (btnCopyLog) {
+        btnCopyLog.addEventListener('click', () => {
+            const content = document.getElementById('log-detail-content').textContent;
+            navigator.clipboard.writeText(content).then(() => {
+                const originalText = btnCopyLog.innerHTML;
+                btnCopyLog.innerHTML = '<i class="fas fa-check mr-1"></i> 已复制';
+                setTimeout(() => {
+                    btnCopyLog.innerHTML = originalText;
+                }, 2000);
+            });
         });
-    });
+    }
 }
 
 // Rendering
@@ -533,22 +554,39 @@ function renderStatsCharts(data) {
 
 function setupLogEventListeners() {
     // Search Button
-    document.getElementById('btn-search-logs').addEventListener('click', () => {
-        loadLogs(true);
-    });
+    const btnSearchLogs = document.getElementById('btn-search-logs');
+    if (btnSearchLogs) {
+        btnSearchLogs.addEventListener('click', async () => {
+            console.log('Search logs clicked');
+            try {
+                await loadLogs(true);
+            } catch (err) {
+                console.error('Search logs failed:', err);
+                showToast('日志查询失败', 'error');
+            }
+        });
+    } else {
+        console.warn('Button btn-search-logs not found');
+    }
     
     // Pagination
-    document.getElementById('btn-prev-page').addEventListener('click', () => {
-        if (currentLogsPage > 0) {
-            currentLogsPage--;
-            loadLogs();
-        }
-    });
+    const btnPrev = document.getElementById('btn-prev-page');
+    if (btnPrev) {
+        btnPrev.addEventListener('click', () => {
+            if (currentLogsPage > 0) {
+                currentLogsPage--;
+                loadLogs();
+            }
+        });
+    }
     
-    document.getElementById('btn-next-page').addEventListener('click', () => {
-        currentLogsPage++;
-        loadLogs();
-    });
+    const btnNext = document.getElementById('btn-next-page');
+    if (btnNext) {
+        btnNext.addEventListener('click', () => {
+            currentLogsPage++;
+            loadLogs();
+        });
+    }
 
     // Refresh Analysis Button
     const refreshAnalysisBtn = document.getElementById('btn-refresh-analysis');
@@ -559,7 +597,26 @@ function setupLogEventListeners() {
     // Analysis Search Button
     const searchAnalysisBtn = document.getElementById('btn-search-analysis');
     if (searchAnalysisBtn) {
-        searchAnalysisBtn.addEventListener('click', loadTrafficAnalysis);
+        searchAnalysisBtn.addEventListener('click', async () => {
+            console.log('Analysis search clicked');
+            try {
+                const originalText = searchAnalysisBtn.textContent;
+                searchAnalysisBtn.disabled = true;
+                searchAnalysisBtn.textContent = '查询中...';
+                
+                await loadTrafficAnalysis();
+                
+                searchAnalysisBtn.disabled = false;
+                searchAnalysisBtn.textContent = originalText;
+            } catch (err) {
+                console.error('Analysis search failed:', err);
+                showToast('分析查询失败', 'error');
+                searchAnalysisBtn.disabled = false;
+                searchAnalysisBtn.textContent = '分析查询';
+            }
+        });
+    } else {
+        console.warn('Button btn-search-analysis not found');
     }
 }
 
@@ -733,11 +790,14 @@ function setupEventListeners() {
     });
 
     // Logout
-    document.getElementById('logout-btn').addEventListener('click', () => {
-        localStorage.removeItem('dionaea_access_token');
-        localStorage.removeItem('dionaea_refresh_token');
-        window.location.href = CONFIG.LOGIN_URL;
-    });
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('dionaea_access_token');
+            localStorage.removeItem('dionaea_refresh_token');
+            window.location.href = CONFIG.LOGIN_URL;
+        });
+    }
 
     // User Modals
     setupUserModalListeners();
@@ -792,37 +852,75 @@ let userToDelete = null;
 
 function setupUserModalListeners() {
     // Edit Modal
-    document.getElementById('close-edit-modal').addEventListener('click', () => {
-        document.getElementById('edit-user-modal').classList.add('hidden');
-    });
-    document.getElementById('cancel-edit').addEventListener('click', () => {
-        document.getElementById('edit-user-modal').classList.add('hidden');
-    });
-    document.getElementById('edit-user-form').addEventListener('submit', handleEditUserSubmit);
+    const btnCloseEdit = document.getElementById('close-edit-modal');
+    if (btnCloseEdit) {
+        btnCloseEdit.addEventListener('click', () => {
+            document.getElementById('edit-user-modal').classList.add('hidden');
+        });
+    }
+
+    const btnCancelEdit = document.getElementById('cancel-edit');
+    if (btnCancelEdit) {
+        btnCancelEdit.addEventListener('click', () => {
+            document.getElementById('edit-user-modal').classList.add('hidden');
+        });
+    }
+
+    const formEdit = document.getElementById('edit-user-form');
+    if (formEdit) {
+        formEdit.addEventListener('submit', handleEditUserSubmit);
+    }
     
     // Status Toggle Label Update
-    document.getElementById('edit-status').addEventListener('change', (e) => {
-        document.getElementById('edit-status-label').textContent = e.target.checked ? 'Active' : 'Pending';
-    });
+    const editStatus = document.getElementById('edit-status');
+    if (editStatus) {
+        editStatus.addEventListener('change', (e) => {
+            const label = document.getElementById('edit-status-label');
+            if (label) label.textContent = e.target.checked ? 'Active' : 'Pending';
+        });
+    }
 
     // Delete Modal
-    document.getElementById('cancel-delete').addEventListener('click', () => {
-        document.getElementById('delete-user-modal').classList.add('hidden');
-        userToDelete = null;
-    });
-    document.getElementById('confirm-delete').addEventListener('click', confirmDeleteUser);
+    const btnCancelDel = document.getElementById('cancel-delete');
+    if (btnCancelDel) {
+        btnCancelDel.addEventListener('click', () => {
+            document.getElementById('delete-user-modal').classList.add('hidden');
+            userToDelete = null;
+        });
+    }
+
+    const btnConfirmDel = document.getElementById('confirm-delete');
+    if (btnConfirmDel) {
+        btnConfirmDel.addEventListener('click', confirmDeleteUser);
+    }
 
     // Add User Modal
-    document.getElementById('close-add-modal').addEventListener('click', () => {
-        document.getElementById('add-user-modal').classList.add('hidden');
-    });
-    document.getElementById('cancel-add').addEventListener('click', () => {
-        document.getElementById('add-user-modal').classList.add('hidden');
-    });
-    document.getElementById('add-status').addEventListener('change', (e) => {
-        document.getElementById('add-status-label').textContent = e.target.checked ? 'Active' : 'Pending';
-    });
-    document.getElementById('add-user-form').addEventListener('submit', handleAddUserSubmit);
+    const btnCloseAdd = document.getElementById('close-add-modal');
+    if (btnCloseAdd) {
+        btnCloseAdd.addEventListener('click', () => {
+            document.getElementById('add-user-modal').classList.add('hidden');
+        });
+    }
+
+    const btnCancelAdd = document.getElementById('cancel-add');
+    if (btnCancelAdd) {
+        btnCancelAdd.addEventListener('click', () => {
+            document.getElementById('add-user-modal').classList.add('hidden');
+        });
+    }
+
+    const addStatus = document.getElementById('add-status');
+    if (addStatus) {
+        addStatus.addEventListener('change', (e) => {
+            const label = document.getElementById('add-status-label');
+            if (label) label.textContent = e.target.checked ? 'Active' : 'Pending';
+        });
+    }
+
+    const formAdd = document.getElementById('add-user-form');
+    if (formAdd) {
+        formAdd.addEventListener('submit', handleAddUserSubmit);
+    }
 
     // Role Modals
     setupRoleModalListeners();
@@ -833,29 +931,54 @@ let allPermissions = [];
 
 function setupRoleModalListeners() {
     // Add Role Button
-    document.getElementById('btn-add-role').addEventListener('click', openAddRoleModal);
+    const btnAddRole = document.getElementById('btn-add-role');
+    if (btnAddRole) {
+        btnAddRole.addEventListener('click', openAddRoleModal);
+    }
 
     // Modal Controls
-    document.getElementById('close-role-modal').addEventListener('click', () => {
-        document.getElementById('role-modal').classList.add('hidden');
-    });
-    document.getElementById('cancel-role').addEventListener('click', () => {
-        document.getElementById('role-modal').classList.add('hidden');
-    });
-    document.getElementById('role-form').addEventListener('submit', handleRoleSubmit);
+    const btnCloseRole = document.getElementById('close-role-modal');
+    if (btnCloseRole) {
+        btnCloseRole.addEventListener('click', () => {
+            document.getElementById('role-modal').classList.add('hidden');
+        });
+    }
+
+    const btnCancelRole = document.getElementById('cancel-role');
+    if (btnCancelRole) {
+        btnCancelRole.addEventListener('click', () => {
+            document.getElementById('role-modal').classList.add('hidden');
+        });
+    }
+
+    const formRole = document.getElementById('role-form');
+    if (formRole) {
+        formRole.addEventListener('submit', handleRoleSubmit);
+    }
     
     // Status Toggle
-    document.getElementById('role-status').addEventListener('change', (e) => {
-        document.getElementById('role-status-label').textContent = e.target.checked ? 'Active' : 'Inactive';
-    });
+    const roleStatus = document.getElementById('role-status');
+    if (roleStatus) {
+        roleStatus.addEventListener('change', (e) => {
+            const label = document.getElementById('role-status-label');
+            if (label) label.textContent = e.target.checked ? 'Active' : 'Inactive';
+        });
+    }
 
     // Permission Select All/None
-    document.getElementById('btn-select-all-perms').addEventListener('click', () => {
-        document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = true);
-    });
-    document.getElementById('btn-deselect-all-perms').addEventListener('click', () => {
-        document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = false);
-    });
+    const btnSelectAll = document.getElementById('btn-select-all-perms');
+    if (btnSelectAll) {
+        btnSelectAll.addEventListener('click', () => {
+            document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = true);
+        });
+    }
+
+    const btnDeselectAll = document.getElementById('btn-deselect-all-perms');
+    if (btnDeselectAll) {
+        btnDeselectAll.addEventListener('click', () => {
+            document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = false);
+        });
+    }
 }
 
 async function loadRolesList() {

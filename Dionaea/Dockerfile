@@ -16,4 +16,4 @@ ADD web_dionaea /opt/web_dionaea
 WORKDIR /opt/web_dionaea
 
 EXPOSE 80
-CMD ["python", "manage.py", "runserver", "0.0.0.0:80"]
+CMD ["python2", "manage.py", "runserver", "0.0.0.0:80"]

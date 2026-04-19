@@ -1,7 +1,7 @@
 import json
 import logging
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, or_
 from app.models.attack_log import AttackLog
 from app.schemas.attack_log import AttackLogFilter
 from app.core.config import settings
@@ -28,13 +28,16 @@ class AttackLogService:
         if filters.end_time:
             query = query.filter(AttackLog.timestamp <= filters.end_time)
         if filters.source_ip:
-            query = query.filter(AttackLog.source_ip.contains(filters.source_ip))
+            query = query.filter(AttackLog.source_ip.ilike(f"%{filters.source_ip}%"))
         if filters.username:
-            query = query.filter(AttackLog.username.contains(filters.username))
+            query = query.filter(AttackLog.username.ilike(f"%{filters.username}%"))
         if filters.password:
-            query = query.filter(AttackLog.password.contains(filters.password))
+            query = query.filter(AttackLog.password.ilike(f"%{filters.password}%"))
         if filters.attack_type:
-            query = query.filter(AttackLog.attack_type.contains(filters.attack_type))
+            query = query.filter(or_(
+                AttackLog.attack_type.ilike(f"%{filters.attack_type}%"),
+                AttackLog.protocol.ilike(f"%{filters.attack_type}%")
+            ))
 
         total = query.count()
         logs = query.order_by(desc(AttackLog.timestamp)).offset(filters.offset).limit(filters.limit).all()
@@ -131,11 +134,17 @@ class AttackLogService:
                 dist_query = dist_query.filter(AttackLog.timestamp <= filters.end_time)
                 timeline_query = timeline_query.filter(AttackLog.timestamp <= filters.end_time)
             if filters.source_ip:
-                dist_query = dist_query.filter(AttackLog.source_ip.contains(filters.source_ip))
-                timeline_query = timeline_query.filter(AttackLog.source_ip.contains(filters.source_ip))
+                dist_query = dist_query.filter(AttackLog.source_ip.ilike(f"%{filters.source_ip}%"))
+                timeline_query = timeline_query.filter(AttackLog.source_ip.ilike(f"%{filters.source_ip}%"))
             if filters.attack_type:
-                dist_query = dist_query.filter(AttackLog.attack_type.contains(filters.attack_type))
-                timeline_query = timeline_query.filter(AttackLog.attack_type.contains(filters.attack_type))
+                dist_query = dist_query.filter(or_(
+                    AttackLog.attack_type.ilike(f"%{filters.attack_type}%"),
+                    AttackLog.protocol.ilike(f"%{filters.attack_type}%")
+                ))
+                timeline_query = timeline_query.filter(or_(
+                    AttackLog.attack_type.ilike(f"%{filters.attack_type}%"),
+                    AttackLog.protocol.ilike(f"%{filters.attack_type}%")
+                ))
 
         # 1. Attack Type Distribution Execution
         attack_types = dist_query.group_by(AttackLog.attack_type).order_by(desc('count')).all()

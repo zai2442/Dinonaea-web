@@ -78,9 +78,9 @@ def init_db(db: Session) -> None:
 
     # 4. Create Initial Users
     users_data = [
-        {"username": "admin", "email": "admin@example.com", "password": "password", "role": "super_admin"},
-        {"username": "manager", "email": "manager@example.com", "password": "password", "role": "admin"},
-        {"username": "user", "email": "user@example.com", "password": "password", "role": "user"},
+        {"username": "admin", "email": "admin@example.com", "password": "123456", "role": "super_admin"},
+        {"username": "manager", "email": "manager@example.com", "password": "123456", "role": "admin"},
+        {"username": "user", "email": "user@example.com", "password": "123456", "role": "user"},
     ]
 
     for u_data in users_data:

@@ -14,9 +14,9 @@ services:
     image: postgres:15-alpine
     container_name: dionaea_postgres
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
-      POSTGRES_DB: db_name
+      POSTGRES_USER: dionaea_user
+      POSTGRES_PASSWORD: dionaea_pass
+      POSTGRES_DB: dionaea_db
     ports:
       - "5432:5432"
     restart: unless-stopped

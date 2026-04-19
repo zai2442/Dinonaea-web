@@ -20,6 +20,9 @@ docker run -d -p 80:80 -v /opt:/tmp --restart=always web_dionaea
 ### 方式二：本地部署
 ```bash
 cd Dionaea/web_dionaea
+# 建立并激活虚拟环境 (需提前安装好python2及virtualenv)
+virtualenv -p python2 venv
+source venv/bin/activate
 # 安装依赖
 pip install django==1.9.8 
 # 执行数据库迁移
@@ -59,6 +62,7 @@ docker-compose up -d
 cd Dionaea/backend
 # 建立并激活虚拟环境
 python3 -m venv .venv
+
 source .venv/bin/activate
 # 1. 安装依赖
 pip install -r requirements.txt
@@ -77,7 +81,18 @@ python main.py
 ```
 > 后端启动后，API 文档访问地址为：`http://localhost:8001/docs`
 
-### 2.2 前端启动 (Frontend)
+### 2.3 日志采集服务 (Ingestor)
+负责实时监控蜜罐生成的日志并同步到分析平台数据库。
+```bash
+cd Dionaea/backend
+source .venv/bin/activate
+
+# 启动日志采集
+python ingestor.py
+```
+> 注意：确保 `ingestor.py` 中的 `MONITOR_DIR` 指向蜜罐日志文件 `Dionaea.log` 所在的目录（默认为 `/tmp`）。
+
+### 2.4 前端启动 (Frontend)
 前端为静态构建的 Web 页面。
 ```bash
 cd Dionaea/frontend_login_demo

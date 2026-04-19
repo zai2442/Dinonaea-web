@@ -4,7 +4,7 @@
  */
 
 const CONFIG = {
-    API_BASE: 'http://localhost:8001/api/v1',
+    API_BASE: '/api/v1',
     LOGIN_URL: 'index.html'
 };
 
@@ -808,6 +808,10 @@ function setupEventListeners() {
 // --- Toast Notification ---
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
+    if (!container) {
+        console.warn('Toast container not found:', message);
+        return;
+    }
     const toast = document.createElement('div');
     const colors = type === 'success' ? 'bg-green-500' : (type === 'error' ? 'bg-red-500' : 'bg-blue-500');
     const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
@@ -930,55 +934,39 @@ function setupUserModalListeners() {
 let allPermissions = [];
 
 function setupRoleModalListeners() {
+    // Helper to safely bind event
+    const bind = (id, event, cb) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, cb);
+    };
+
+    const closeModal = () => {
+        const modal = document.getElementById('role-modal');
+        if (modal) modal.classList.add('hidden');
+    };
+
     // Add Role Button
-    const btnAddRole = document.getElementById('btn-add-role');
-    if (btnAddRole) {
-        btnAddRole.addEventListener('click', openAddRoleModal);
-    }
+    bind('btn-add-role', 'click', openAddRoleModal);
 
     // Modal Controls
-    const btnCloseRole = document.getElementById('close-role-modal');
-    if (btnCloseRole) {
-        btnCloseRole.addEventListener('click', () => {
-            document.getElementById('role-modal').classList.add('hidden');
-        });
-    }
-
-    const btnCancelRole = document.getElementById('cancel-role');
-    if (btnCancelRole) {
-        btnCancelRole.addEventListener('click', () => {
-            document.getElementById('role-modal').classList.add('hidden');
-        });
-    }
-
-    const formRole = document.getElementById('role-form');
-    if (formRole) {
-        formRole.addEventListener('submit', handleRoleSubmit);
-    }
+    bind('close-role-modal', 'click', closeModal);
+    bind('cancel-role', 'click', closeModal);
+    bind('role-form', 'submit', handleRoleSubmit);
     
     // Status Toggle
-    const roleStatus = document.getElementById('role-status');
-    if (roleStatus) {
-        roleStatus.addEventListener('change', (e) => {
-            const label = document.getElementById('role-status-label');
-            if (label) label.textContent = e.target.checked ? 'Active' : 'Inactive';
-        });
-    }
+    bind('role-status', 'change', (e) => {
+        const label = document.getElementById('role-status-label');
+        if (label) label.textContent = e.target.checked ? 'Active' : 'Inactive';
+    });
 
     // Permission Select All/None
-    const btnSelectAll = document.getElementById('btn-select-all-perms');
-    if (btnSelectAll) {
-        btnSelectAll.addEventListener('click', () => {
-            document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = true);
-        });
-    }
+    bind('btn-select-all-perms', 'click', () => {
+        document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = true);
+    });
 
-    const btnDeselectAll = document.getElementById('btn-deselect-all-perms');
-    if (btnDeselectAll) {
-        btnDeselectAll.addEventListener('click', () => {
-            document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = false);
-        });
-    }
+    bind('btn-deselect-all-perms', 'click', () => {
+        document.querySelectorAll('#permissions-container input[type="checkbox"]').forEach(cb => cb.checked = false);
+    });
 }
 
 async function loadRolesList() {

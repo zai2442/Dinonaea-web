@@ -5,7 +5,7 @@
 
 // Configuration
 const CONFIG = {
-    API_URL: 'http://localhost:8001/api/v1/auth/login', // 已修改为您的后端地址 (端口 8001)
+    API_URL: '/api/v1/auth/login', // 改为相对路径，自动适配各种 IP 访问
     DASHBOARD_URL: '/dashboard.html', // Redirect target after login
     ANIMATION_DURATION: 300,
     MOCK_MODE: false // 已关闭 Mock 模式，启用真实接口

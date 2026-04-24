@@ -1508,9 +1508,7 @@ function updateNodeStats(nodes) {
 
 function connectNodesWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use the API_BASE but replace http with ws and remove /api/v1 prefix if needed, or just append ws path
-    // CONFIG.API_BASE is http://localhost:8001/api/v1
-    const wsUrl = CONFIG.API_BASE.replace('http', 'ws') + '/nodes/ws';
+    const wsUrl = `${protocol}//${window.location.host}${CONFIG.API_BASE}/nodes/ws`;
     
     nodesWebSocket = new WebSocket(wsUrl);
     

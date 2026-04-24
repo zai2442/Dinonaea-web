@@ -5,7 +5,7 @@
 
 // Configuration
 const CONFIG = {
-    API_URL: 'http://localhost:8001/api/v1/auth/register', // Adjust if backend is on a different port/host
+    API_URL: '/api/v1/auth/register', // Use relative path to support various hostnames/IPs
     LOGIN_URL: 'index.html', // Redirect target after success
     MOCK_MODE: false // Set to false to use real API
 };

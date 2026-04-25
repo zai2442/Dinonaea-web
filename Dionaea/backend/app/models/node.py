@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, Text, Boolean
+from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, Text, Boolean, UniqueConstraint
 from datetime import datetime
 from typing import Optional, List
 from app.models.base import BaseModel
@@ -8,9 +8,13 @@ from app.db.database import Base
 class Node(BaseModel):
     __tablename__ = "nodes"
 
-    ip_address: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
+    ip_address: Mapped[str] = mapped_column(String(50), index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     port: Mapped[int] = mapped_column(Integer, default=80)
+
+    __table_args__ = (
+        UniqueConstraint('ip_address', 'port', name='uix_ip_port'),
+    )
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     group: Mapped[Optional[str]] = mapped_column(String(50), default="default")
     

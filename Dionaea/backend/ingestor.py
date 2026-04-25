@@ -33,6 +33,7 @@ USERNAME_PATTERN = re.compile(r"Username:(?P<username>.*?)(?:\s+|$)")
 PASSWORD_PATTERN = re.compile(r"Password:(?P<password>.*?)(?:\s+|$)")
 IPADDR_PATTERN = re.compile(r"ipaddr:(?P<ipaddr>.*?)(?:\s+|$)")
 PROTOCOL_PATTERN = re.compile(r"Protocol:(?P<protocol>.*?)(?:\s+|$)")
+PORT_PATTERN = re.compile(r"Port:(?P<port>\d+)(?:\s+|$)")
 HTTP_NOT_FOUND_PATTERN = re.compile(r"Not Found:\s+(?P<path>.*)$")
 
 # Initialize Rule Engine
@@ -55,23 +56,34 @@ def get_local_ip():
 class LogHandler(FileSystemEventHandler):
     def __init__(self):
         self.file_offsets = {}
-        self.sensor_name = self._get_sensor_name()
+        # Allow override via environment variable
+        self.env_sensor_name = os.environ.get("DIONAEA_SENSOR_NAME")
+        if self.env_sensor_name:
+            logger.info(f"Using sensor name from environment: {self.env_sensor_name}")
 
-    def _get_sensor_name(self):
-        db = SessionLocal()
+    def _get_sensor_name(self, db, ip, port=None):
+        if self.env_sensor_name:
+            return self.env_sensor_name
+            
         try:
-            ip = get_local_ip()
-            logger.info(f"Resolving sensor name for IP: {ip}")
-            node = db.query(Node).filter(Node.ip_address == ip).first()
+            logger.debug(f"Resolving sensor name for IP: {ip}, Port: {port}")
+            query = db.query(Node).filter(Node.ip_address == ip)
+            if port:
+                # Try specific port match first
+                node = query.filter(Node.port == port).first()
+                if node:
+                    return node.name
+            
+            # Fallback to first node for this IP
+            node = query.first()
             if node:
-                logger.info(f"Found existing node: {node.name}")
                 return node.name
             
-            # Create if not exists
+            # Create if not exists (defaulting to port 80 if not provided)
             new_node = Node(
                 name=f"Dionaea-Node-{ip}",
                 ip_address=ip,
-                port=80,
+                port=port if port else 80,
                 status="online",
                 description="Auto-created by ingestor",
                 is_active=True
@@ -79,13 +91,16 @@ class LogHandler(FileSystemEventHandler):
             db.add(new_node)
             db.commit()
             db.refresh(new_node)
-            logger.info(f"Created new node for local IP: {ip}")
+            logger.info(f"Created new node for local IP: {ip}, Port: {new_node.port}")
             return new_node.name
         except Exception as e:
             logger.error(f"Error resolving sensor name: {e}")
             return "unknown-sensor"
-        finally:
-            db.close()
+
+    def _get_local_ip(self):
+        if not hasattr(self, '_local_ip'):
+            self._local_ip = get_local_ip()
+        return self._local_ip
 
     def on_created(self, event):
         if not event.is_directory and os.path.basename(event.src_path) == "Dionaea.log":
@@ -112,9 +127,20 @@ class LogHandler(FileSystemEventHandler):
         except Exception as e:
             logger.error(f"Error processing file {filepath}: {e}")
 
+    def get_cached_sensor_name(self, db, ip, port):
+        if not hasattr(self, '_sensor_cache'):
+            self._sensor_cache = {}
+        
+        key = (ip, port)
+        if key not in self._sensor_cache:
+            self._sensor_cache[key] = self._get_sensor_name(db, ip, port)
+        
+        return self._sensor_cache[key]
+
     def ingest_lines(self, lines):
         db = SessionLocal()
         new_entries = 0
+        local_ip = self._get_local_ip()
         try:
             for line in lines:
                 line = line.strip()
@@ -140,12 +166,19 @@ class LogHandler(FileSystemEventHandler):
                         protocol = 'smb'
                     protocol = protocol.lower()
 
-                    target_port = 445
-                    if protocol == 'http':
-                        target_port = 80
-                    elif protocol == 'smb':
-                        target_port = 445
+                    # Use parsed target_port if available, otherwise fallback
+                    target_port = parsed.get('target_port')
+                    if not target_port:
+                        if protocol == 'http':
+                            target_port = 80
+                        elif protocol == 'smb':
+                            target_port = 445
+                        else:
+                            target_port = 80 # default
                     
+                    # Resolve sensor name based on IP and Port
+                    sensor_name = self.get_cached_sensor_name(db, local_ip, target_port)
+
                     # Match against regex rules
                     matched_category = rule_engine.match(line)
                     attack_type = matched_category if matched_category else protocol
@@ -164,7 +197,7 @@ class LogHandler(FileSystemEventHandler):
                         target_port=target_port,
                         protocol=protocol,
                         connection_status="attempt",
-                        sensor_name=self.sensor_name,
+                        sensor_name=sensor_name,
                         raw_log=raw_log,
                         attack_type=attack_type # Mapped from regex or protocol
                     )
@@ -205,12 +238,20 @@ class LogHandler(FileSystemEventHandler):
             p_match = PASSWORD_PATTERN.search(content)
             i_match = IPADDR_PATTERN.search(content)
             pr_match = PROTOCOL_PATTERN.search(content)
+            port_match = PORT_PATTERN.search(content)
             
             if u_match: username = u_match.group('username')
             if p_match: password = p_match.group('password')
             if i_match: source_ip = i_match.group('ipaddr').strip()
             if pr_match: protocol = pr_match.group('protocol').strip()
             
+            target_port = None
+            if port_match:
+                try:
+                    target_port = int(port_match.group('port'))
+                except ValueError:
+                    pass
+
             # Fallback for "Not Found" logs
             if username == "-" and "Not Found:" in content:
                 nf_match = HTTP_NOT_FOUND_PATTERN.search(content)
@@ -229,7 +270,8 @@ class LogHandler(FileSystemEventHandler):
                 "username": username,
                 "password": password,
                 "source_ip": source_ip,
-                "protocol": protocol
+                "protocol": protocol,
+                "target_port": target_port
             }
         except ValueError as e:
             logger.error(f"Date parsing error: {e} for line: {line}")

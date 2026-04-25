@@ -33,9 +33,9 @@ manager = ConnectionManager()
 
 @router.post("/", response_model=NodeResponse, status_code=status.HTTP_201_CREATED)
 def create_node(node: NodeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
-    db_node = db.query(Node).filter(Node.ip_address == node.ip_address).first()
+    db_node = db.query(Node).filter(Node.ip_address == node.ip_address, Node.port == node.port).first()
     if db_node:
-        raise HTTPException(status_code=400, detail="Node with this IP already exists")
+        raise HTTPException(status_code=400, detail="Node with this IP and port already exists")
     
     new_node = Node(
         name=node.name,
